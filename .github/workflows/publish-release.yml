@@ -1,0 +1,29 @@
+name: Publish verified plugin packages
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing draft release tag
+        required: true
+        default: v0.2.0
+permissions:
+  contents: write
+concurrency:
+  group: xlinui-release
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Check package hashes
+        run: sha256sum -c SHA256SUMS.txt
+      - name: Upload packages and publish existing draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          gh release view "$RELEASE_TAG" --json isDraft --jq '.isDraft' | grep -qx true
+          gh release upload "$RELEASE_TAG" XLinUI.zip XLinUI-source.zip SHA256SUMS.txt --clobber
+          gh release edit "$RELEASE_TAG" --draft=false --prerelease
