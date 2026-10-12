@@ -4,6 +4,7 @@ using System.Linq;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Game.Text;
+using Dalamud.Game.ClientState.Objects.Types;
 using Dalamud.Interface.Textures;
 using Dalamud.Interface.Utility;
 
@@ -14,6 +15,7 @@ internal sealed class UserInterface(Plugin plugin)
     internal bool SettingsOpen;
     internal bool ChatVisible { get; private set; }
     private string search = "";
+    private readonly HashSet<string> importedLayouts = [];
     private string draft = "";
     private string notice = "";
     private int sendChannel;
@@ -30,7 +32,9 @@ internal sealed class UserInterface(Plugin plugin)
         using var theme = new Theme(C);
         if (C.Enabled && loggedIn)
         {
-            if (C.ShowTop) DrawTop();
+            if (C.ShowTop || !C.ShowOriginalUi) DrawTop();
+            if (C.ShowStatus) DrawStatus();
+            if (C.ShowParty) DrawParty();
             if (C.ShowChat) DrawChat();
             if (C.ShowSkills) DrawSkills();
         }
@@ -41,7 +45,7 @@ internal sealed class UserInterface(Plugin plugin)
     {
         var viewport = ImGuiHelpers.MainViewport;
         ImGui.SetNextWindowPos(viewport.Pos);
-        ImGui.SetNextWindowSize(new Vector2(viewport.Size.X, 52 * ImGuiHelpers.GlobalScale));
+        ImGui.SetNextWindowSize(new Vector2(viewport.Size.X, 64 * ImGuiHelpers.GlobalScale));
         var visible = ImGui.Begin("XLinUI · 顶部###XLinUITop", ImGuiWindowFlags.NoDecoration |
             ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoSavedSettings | ImGuiWindowFlags.NoScrollbar);
         try
@@ -54,15 +58,81 @@ internal sealed class UserInterface(Plugin plugin)
                 try
                 {
                     ImGui.BeginDisabled(!C.NativeInteractions);
-                    if (ImGui.Button(shortcut.Name)) Native(() => GameBridge.Open(shortcut.Command));
+                    if (ImGui.Button(shortcut.Name))
+                    {
+                        C.ShowOriginalUi = true; plugin.Save();
+                        Native(() => GameBridge.Open(shortcut.Command));
+                    }
                     ImGui.EndDisabled();
                 }
                 finally { ImGui.PopID(); }
                 ImGui.SameLine();
             }
             if (ImGui.Button("设置")) SettingsOpen = true;
+            ImGui.SameLine();
+            if (ImGui.Button(C.ShowOriginalUi ? "原版 UI：显示" : "恢复原版 UI"))
+            { C.ShowOriginalUi = !C.ShowOriginalUi; plugin.Save(); }
         }
         finally { ImGui.End(); }
+    }
+
+    private void ImportLayout(string key, params string[] names)
+    {
+        if (!C.FollowGameLayout || importedLayouts.Contains(key)) return;
+        foreach (var name in names)
+            if (plugin.GameUi.Layouts.TryGetValue(name, out var layout))
+            {
+                ImGui.SetNextWindowPos(ImGuiHelpers.MainViewport.Pos + new Vector2(layout.X, layout.Y));
+                importedLayouts.Add(key);
+                break;
+            }
+    }
+
+    private void DrawStatus()
+    {
+        ImGui.SetNextWindowSize(new Vector2(330, 180) * ImGuiHelpers.GlobalScale, ImGuiCond.FirstUseEver);
+        ImportLayout("status", "_Parameter", "Parameter");
+        var visible = ImGui.Begin("状态###XLinUIStatus", ImGuiWindowFlags.NoCollapse);
+        try
+        {
+            if (!visible || Plugin.Objects.LocalPlayer is not { } player) return;
+            ImGui.TextColored(new Vector4(C.Tint, 1), player.Name.TextValue);
+            ImGui.SameLine(); ImGui.TextDisabled($"Lv.{player.Level}");
+            Resource("HP", player.CurrentHp, player.MaxHp);
+            Resource("MP", player.CurrentMp, player.MaxMp);
+            if (Plugin.Targets.Target is ICharacter target)
+            {
+                ImGui.Separator();
+                ImGui.TextUnformatted(target.Name.TextValue);
+                Resource("目标 HP", target.CurrentHp, target.MaxHp);
+            }
+        }
+        finally { ImGui.End(); }
+    }
+
+    private void DrawParty()
+    {
+        if (Plugin.Party.Length == 0) return;
+        ImGui.SetNextWindowSize(new Vector2(270, 300) * ImGuiHelpers.GlobalScale, ImGuiCond.FirstUseEver);
+        ImportLayout("party", "_PartyList", "PartyList");
+        var visible = ImGui.Begin("队伍###XLinUIParty");
+        try
+        {
+            if (!visible) return;
+            foreach (var member in Plugin.Party)
+            {
+                ImGui.TextUnformatted(member.Name.TextValue);
+                Resource("HP", member.CurrentHP, member.MaxHP);
+                ImGui.Spacing();
+            }
+        }
+        finally { ImGui.End(); }
+    }
+
+    private static void Resource(string label, uint current, uint maximum)
+    {
+        ImGui.ProgressBar(maximum == 0 ? 0 : Math.Clamp((float)current / maximum, 0, 1), new Vector2(-1, 12 * ImGuiHelpers.GlobalScale), "");
+        ImGui.TextDisabled($"{label}   {current:N0} / {maximum:N0}");
     }
 
     private void DrawChat()
@@ -71,6 +141,7 @@ internal sealed class UserInterface(Plugin plugin)
         ImGui.SetNextWindowSize(new Vector2(820, 500) * scale, ImGuiCond.FirstUseEver);
         ImGui.SetNextWindowSizeConstraints(new Vector2(550, 340) * scale, new Vector2(float.MaxValue));
         ImGuiHelpers.SetNextWindowPosRelativeMainViewport(new Vector2(30, 150), ImGuiCond.FirstUseEver);
+        ImportLayout("chat", "ChatLog");
         var open = C.ShowChat;
         var visible = ImGui.Begin("XLinUI · 聊天###XLinUIChat", ref open, ImGuiWindowFlags.NoScrollbar);
         try
@@ -104,7 +175,7 @@ internal sealed class UserInterface(Plugin plugin)
                     ImGui.Spacing();
                     var hide = C.HideOriginalChat;
                     if (ImGui.Checkbox("隐藏原版聊天", ref hide)) { C.HideOriginalChat = hide; plugin.Save(); }
-                    ImGui.TextWrapped("关闭或折叠此窗口会恢复原版聊天。");
+                    ImGui.TextWrapped(C.ShowOriginalUi ? "关闭或折叠此窗口会恢复原版聊天。" : "全局隐藏已开启；顶部按钮可恢复原版 UI。");
                 }
             }
             finally { ImGui.EndChild(); }
@@ -114,7 +185,7 @@ internal sealed class UserInterface(Plugin plugin)
             {
                 if (!conversation) { ChatVisible = false; return; }
                 ImGui.TextColored(new Vector4(C.Tint, 1), channelNow.Name);
-                ImGui.SameLine(); ImGui.TextDisabled(C.HideOriginalChat ? "· 原版聊天已隐藏" : "· 原版聊天保留");
+                ImGui.SameLine(); ImGui.TextDisabled(!C.ShowOriginalUi || C.HideOriginalChat ? "· 原版聊天已隐藏" : "· 原版聊天保留");
                 ImGui.SetNextItemWidth(-1);
                 ImGui.InputTextWithHint("##history-search", "搜索发言人或消息", ref search, 128);
                 var height = Math.Max(80 * scale, ImGui.GetContentRegionAvail().Y - 100 * scale);
@@ -192,6 +263,7 @@ internal sealed class UserInterface(Plugin plugin)
     {
         ImGui.PushStyleVar(ImGuiStyleVar.WindowRounding, 0);
         ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 0);
+        ImportLayout("skills", "_ActionBar", "ActionBar");
         var visible = ImGui.Begin("XLinUI · 技能###XLinUISkills", ImGuiWindowFlags.AlwaysAutoResize);
         try
         {
@@ -250,8 +322,21 @@ internal sealed class UserInterface(Plugin plugin)
         try
         {
             if (!visible) return;
-            ImGui.TextWrapped("原版 HUD 保留。/xlinui off 可关闭所有新面板。技能 UI 固定直角。");
+            ImGui.TextWrapped("/xlinui restore 恢复原版界面。/xlinui off 关闭新面板并恢复原版。技能 UI 固定直角。");
             changed |= Toggle("启用 XLinUI", C.Enabled, v => C.Enabled = v);
+            changed |= Toggle("显示原游戏 UI（关闭为实验性全隐藏）", C.ShowOriginalUi, v => C.ShowOriginalUi = v);
+            ImGui.TextWrapped("尚未重做背包、市场、任务对话等窗口。隐藏全部原版 UI 后，可用顶部恢复按钮或 /xlinui restore 返回；打开快捷入口也会先恢复原版。");
+            changed |= Toggle("角色与目标状态", C.ShowStatus, v => C.ShowStatus = v);
+            changed |= Toggle("队伍面板", C.ShowParty, v => C.ShowParty = v);
+            changed |= Toggle("采用读取到的原版布局", C.FollowGameLayout, v => C.FollowGameLayout = v);
+            if (ImGui.Button("重新应用已读取布局")) importedLayouts.Clear();
+            ImGui.TextDisabled($"已读取 {plugin.GameUi.Layouts.Count} 个已加载窗口，游戏 UI 比例 {plugin.GameUi.GameScale:F2}");
+            if (ImGui.TreeNode("已读取的原版窗口设置"))
+            {
+                foreach (var item in plugin.GameUi.Layouts.OrderBy(i => i.Key))
+                    ImGui.TextUnformatted($"{item.Key}: ({item.Value.X:F0}, {item.Value.Y:F0}) · 比例 {item.Value.Scale:F2} · 原先{(item.Value.Visible ? "显示" : "隐藏")}");
+                ImGui.TreePop();
+            }
             changed |= Toggle("顶部快捷栏", C.ShowTop, v => C.ShowTop = v);
             changed |= Toggle("分类聊天", C.ShowChat, v => C.ShowChat = v);
             changed |= Toggle("显示插件聊天时隐藏原版聊天", C.HideOriginalChat, v => C.HideOriginalChat = v);
@@ -347,16 +432,26 @@ internal sealed class UserInterface(Plugin plugin)
             ImGui.PushStyleVar(ImGuiStyleVar.WindowRounding, c.Rounded ? 10 : 0);
             ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, c.Rounded ? 8 : 0);
             ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, c.Rounded ? 6 : 0);
+            ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(16, 14));
+            ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(10, 6));
+            ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(10, 8));
+            ImGui.PushStyleVar(ImGuiStyleVar.WindowBorderSize, 1);
             var tint = c.Tint;
-            ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(tint * .13f, c.Glass ? c.Opacity : 1));
+            ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(new Vector3(.035f, .045f, .065f) + tint * .04f, c.Glass ? c.Opacity : 1));
             ImGui.PushStyleColor(ImGuiCol.ChildBg, Vector4.Zero);
             ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(tint * .24f, .85f));
             ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(tint * .45f, 1));
             ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(tint * .6f, 1));
             ImGui.PushStyleColor(ImGuiCol.Header, new Vector4(tint * .35f, .8f));
             ImGui.PushStyleColor(ImGuiCol.CheckMark, new Vector4(tint, 1));
-            ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(tint * .45f, .6f));
+            ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(.24f, .29f, .35f, .65f));
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(.91f, .94f, .98f, 1));
+            ImGui.PushStyleColor(ImGuiCol.TextDisabled, new Vector4(.59f, .65f, .73f, 1));
+            ImGui.PushStyleColor(ImGuiCol.FrameBg, new Vector4(.08f, .10f, .14f, .95f));
+            ImGui.PushStyleColor(ImGuiCol.TitleBg, new Vector4(.055f, .07f, .10f, .95f));
+            ImGui.PushStyleColor(ImGuiCol.TitleBgActive, new Vector4(.08f, .10f, .14f, .95f));
+            ImGui.PushStyleColor(ImGuiCol.PlotHistogram, new Vector4(tint, .9f));
         }
-        public void Dispose() { ImGui.PopStyleColor(8); ImGui.PopStyleVar(3); }
+        public void Dispose() { ImGui.PopStyleColor(14); ImGui.PopStyleVar(7); }
     }
 }

@@ -14,3 +14,12 @@ s.Change("chat",1,2,true,true);s.Forget("chat");
 Check(s.Change("chat",1,2,false,false)==null,"finalized addon releases snapshot");
 s.Change("chat",1,2,true,true);s.Change("chat",0,0,false,true);
 Check(s.Change("chat",1,2,false,false)==null,"missing addon releases snapshot");
+
+var all = new ChatVisibilityState();
+all.Change("one",11,12,true,true);all.Change("two",21,22,false,true);
+Check(all.Change("one",11,12,false,false)==true && all.Change("two",21,22,false,false)==false,"restore mixed original window states");
+var chat = new ChatVisibilityState();
+var current=all.Change("chat",1,2,true,true)!.Value;
+current=all.Change("chat",1,2,current,false)!.Value;
+current=chat.Change("chat",1,2,current,true)!.Value;
+Check(chat.Change("chat",1,2,current,false)==true,"release global owner before chat-only hiding");

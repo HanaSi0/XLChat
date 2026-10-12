@@ -14,6 +14,10 @@ public sealed class Configuration : IPluginConfiguration
     public bool ShowTop { get; set; } = true;
     public bool ShowChat { get; set; } = true;
     public bool HideOriginalChat { get; set; }
+    public bool ShowOriginalUi { get; set; } = true;
+    public bool ShowStatus { get; set; } = true;
+    public bool ShowParty { get; set; } = true;
+    public bool FollowGameLayout { get; set; } = true;
     public bool ShowSkills { get; set; } = true;
     public bool Rounded { get; set; } = true;
     public bool Glass { get; set; } = true;

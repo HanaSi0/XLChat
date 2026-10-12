@@ -1,0 +1,15 @@
+using System;
+using XLinUI;
+using Newtonsoft.Json;
+var c = new Configuration();
+c.Channels[0].Name = "我的频道";
+c.ShowOriginalUi = false;
+var restored = JsonConvert.DeserializeObject<Configuration>(JsonConvert.SerializeObject(c))!;
+restored.Normalize();
+if (restored.Channels.Count != c.Channels.Count || restored.Channels[0].Name != "我的频道" || restored.ShowOriginalUi) throw new Exception("Settings roundtrip failed");
+Console.WriteLine("PASS: settings, custom channels and original UI option roundtrip");
+if (!JsonConvert.DeserializeObject<Configuration>("{}")!.ShowOriginalUi) throw new Exception("Old settings unexpectedly hide original UI");
+Console.WriteLine("PASS: legacy settings keep original UI visible");
+restored.Opacity = float.NaN; restored.Hotbar = 99; restored.Channels.Clear(); restored.Normalize();
+if (restored.Opacity != .88f || restored.Hotbar != 9 || restored.Channels.Count == 0) throw new Exception("Normalization failed");
+Console.WriteLine("PASS: invalid settings recovery");

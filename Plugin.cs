@@ -21,6 +21,8 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static IGameGui GameGui { get; private set; } = null!;
     [PluginService] internal static IFramework Framework { get; private set; } = null!;
     [PluginService] internal static IAddonLifecycle Addons { get; private set; } = null!;
+    [PluginService] internal static ITargetManager Targets { get; private set; } = null!;
+    [PluginService] internal static IPartyList Party { get; private set; } = null!;
     [PluginService] internal static IObjectTable Objects { get; private set; } = null!;
     [PluginService] internal static ITextureProvider Textures { get; private set; } = null!;
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
@@ -33,6 +35,7 @@ public sealed class Plugin : IDalamudPlugin
     private bool wasLoggedIn;
     internal int HistoryRevision;
     private readonly OriginalChatVisibility originalChat = new();
+    internal readonly GameUiController GameUi = new();
 
     public Plugin()
     {
@@ -45,6 +48,7 @@ public sealed class Plugin : IDalamudPlugin
         Chat.ChatMessage += OnChat;
         Framework.Update += OnUpdate;
         originalChat.Register();
+        GameUi.Register();
         Interface.UiBuilder.Draw += Draw;
         Interface.UiBuilder.OpenConfigUi += OpenSettings;
         Interface.UiBuilder.OpenMainUi += OpenSettings;
@@ -56,18 +60,23 @@ public sealed class Plugin : IDalamudPlugin
         {
             case "off": Config.Enabled = false; Save(); break;
             case "on": Config.Enabled = true; Save(); break;
-            case "restore": Config.HideOriginalChat = false; Save(); break;
+            case "restore": Config.HideOriginalChat = false; Config.ShowOriginalUi = true; Save(); break;
             default: OpenSettings(); break;
         }
     }
 
-    private void OnUpdate(IFramework framework) => originalChat.Update();
+    private void OnUpdate(IFramework framework)
+    {
+        GameUi.Update();
+        originalChat.Update();
+    }
 
     private void OpenSettings() => ui.SettingsOpen = true;
     internal void Save()
     {
         Interface.SavePluginConfig(Config);
-        if (!Config.Enabled || !Config.ShowChat || !Config.HideOriginalChat) originalChat.SetDesired(false);
+        if (!Config.Enabled || !Config.ShowChat || !Config.HideOriginalChat || !Config.ShowOriginalUi) originalChat.SetDesired(false);
+        if (!Config.Enabled || Config.ShowOriginalUi) GameUi.SetHide(false);
     }
     internal void Reset()
     {
@@ -87,7 +96,20 @@ public sealed class Plugin : IDalamudPlugin
         wasLoggedIn = loggedIn;
         var drawn = false;
         try { ui.Draw(loggedIn); drawn = true; }
-        finally { originalChat.SetDesired(drawn && loggedIn && Config.Enabled && Config.ShowChat && Config.HideOriginalChat && ui.ChatVisible); }
+        finally
+        {
+            var hideAll = drawn && loggedIn && Config.Enabled && !Config.ShowOriginalUi;
+            if (hideAll)
+            {
+                originalChat.SetDesired(false);
+                GameUi.SetHide(true);
+            }
+            else
+            {
+                GameUi.SetHide(false);
+                originalChat.SetDesired(drawn && loggedIn && Config.Enabled && Config.ShowChat && Config.HideOriginalChat && ui.ChatVisible);
+            }
+        }
     }
 
     // The API-15 distribution's event signature is validated during compilation.
@@ -108,6 +130,7 @@ public sealed class Plugin : IDalamudPlugin
     {
         Framework.Update -= OnUpdate;
         originalChat.Dispose();
+        GameUi.Dispose();
         Chat.ChatMessage -= OnChat;
         Interface.UiBuilder.Draw -= Draw;
         Interface.UiBuilder.OpenConfigUi -= OpenSettings;
