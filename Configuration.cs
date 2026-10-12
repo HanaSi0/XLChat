@@ -9,7 +9,15 @@ namespace XLinUI;
 [Serializable]
 public sealed class Configuration : IPluginConfiguration
 {
-    public int Version { get; set; } = 1;
+    public int Version { get; set; } = 2;
+    public bool NativeCombatWidgets { get; set; } = true;
+    public bool TextOnly { get; set; }
+    public bool HideBorders { get; set; } = true;
+    public bool LockWindows { get; set; }
+    public float ChatWidth { get; set; } = 780;
+    public float ChatHeight { get; set; } = 430;
+    public float ChatSidebarWidth { get; set; } = 145;
+    public float ChatFontScale { get; set; } = 1;
     public bool Enabled { get; set; } = true;
     public bool ShowTop { get; set; } = true;
     public bool ShowChat { get; set; } = true;
@@ -32,9 +40,29 @@ public sealed class Configuration : IPluginConfiguration
     [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
     public List<Channel> Channels { get; set; } = DefaultChannels();
 
+    [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
+    public Dictionary<string, bool> TopSections { get; set; } = DefaultTopSections();
+    public static readonly Dictionary<string, string> TopLabels = new()
+    {
+        ["effects"]="特效", ["tribes"]="部族", ["online"]="在线状态", ["jobs"]="职业", ["equipment"]="装备", ["currency"]="货币", ["timers"]="雇员/任务情报", ["teleport"]="传送", ["map"]="地图", ["plugins"]="插件收纳", ["commands"]="指令收纳", ["zone"]="区域/地图/天气", ["fps"]="FPS", ["dtr"]="其他插件 DTR", ["sound"]="音量", ["clock"]="LT/ET",
+    };
+    private static Dictionary<string, bool> DefaultTopSections()
+    {
+        var values=new Dictionary<string,bool>();
+        foreach(var key in TopLabels.Keys) values[key]=true;
+        return values;
+    }
+
     public void Normalize()
     {
-        Opacity = float.IsFinite(Opacity) ? Math.Clamp(Opacity, .05f, 1) : .88f;
+        Version = 2;
+        TopSections ??= DefaultTopSections();
+        foreach (var key in TopLabels.Keys) if (!TopSections.ContainsKey(key)) TopSections[key] = true;
+        Opacity = float.IsFinite(Opacity) ? Math.Clamp(Opacity, 0, 1) : .88f;
+        ChatWidth = float.IsFinite(ChatWidth) ? Math.Clamp(ChatWidth, 380, 1800) : 780;
+        ChatHeight = float.IsFinite(ChatHeight) ? Math.Clamp(ChatHeight, 240, 1200) : 430;
+        ChatSidebarWidth = float.IsFinite(ChatSidebarWidth) ? Math.Clamp(ChatSidebarWidth, 80, 250) : 145;
+        ChatFontScale = float.IsFinite(ChatFontScale) ? Math.Clamp(ChatFontScale, .7f, 1.6f) : 1;
         SkillSize = float.IsFinite(SkillSize) ? Math.Clamp(SkillSize, 32, 72) : 44;
         Hotbar = Math.Clamp(Hotbar, 0, 9);
         Tint = new Vector3(Clamp(Tint.X), Clamp(Tint.Y), Clamp(Tint.Z));

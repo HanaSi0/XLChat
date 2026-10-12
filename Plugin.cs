@@ -21,12 +21,18 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static IGameGui GameGui { get; private set; } = null!;
     [PluginService] internal static IFramework Framework { get; private set; } = null!;
     [PluginService] internal static IAddonLifecycle Addons { get; private set; } = null!;
+    [PluginService] internal static IClientState Client { get; private set; } = null!;
+    [PluginService] internal static IPlayerState Player { get; private set; } = null!;
+    [PluginService] internal static IDataManager Data { get; private set; } = null!;
+    [PluginService] internal static IDtrBar Dtr { get; private set; } = null!;
+    [PluginService] internal static IGameConfig GameConfig { get; private set; } = null!;
     [PluginService] internal static ITargetManager Targets { get; private set; } = null!;
     [PluginService] internal static IPartyList Party { get; private set; } = null!;
     [PluginService] internal static IObjectTable Objects { get; private set; } = null!;
     [PluginService] internal static ITextureProvider Textures { get; private set; } = null!;
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
 
+    internal static Configuration InstanceConfig { get; private set; } = null!;
     internal Configuration Config { get; private set; }
     internal readonly List<ChatLine> History = [];
     internal readonly Dictionary<string, int> Unread = [];
@@ -41,6 +47,7 @@ public sealed class Plugin : IDalamudPlugin
     {
         Config = Interface.GetPluginConfig() as Configuration ?? new Configuration();
         Config.Normalize();
+        InstanceConfig = Config;
         ActiveChannel = Config.Channels[0].Id;
         ui = new UserInterface(this);
         Commands.AddHandler("/xlinui", new CommandInfo(OnCommand)
@@ -81,6 +88,7 @@ public sealed class Plugin : IDalamudPlugin
     internal void Reset()
     {
         Config = new Configuration();
+        InstanceConfig = Config;
         ActiveChannel = Config.Channels[0].Id;
         Unread.Clear();
         Save();
@@ -102,11 +110,11 @@ public sealed class Plugin : IDalamudPlugin
             if (hideAll)
             {
                 originalChat.SetDesired(false);
-                GameUi.SetHide(true);
+                GameUi.SetHide(true, drawn && loggedIn && Config.Enabled);
             }
             else
             {
-                GameUi.SetHide(false);
+                GameUi.SetHide(false, drawn && loggedIn && Config.Enabled);
                 originalChat.SetDesired(drawn && loggedIn && Config.Enabled && Config.ShowChat && Config.HideOriginalChat && ui.ChatVisible);
             }
         }

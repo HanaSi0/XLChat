@@ -16,6 +16,7 @@ internal sealed unsafe class GameUiController : IDisposable
     private bool hide;
     private long lastDraw;
     private bool active;
+    private bool rendered;
 
     internal void Register()
     {
@@ -23,9 +24,9 @@ internal sealed unsafe class GameUiController : IDisposable
         Plugin.Addons.RegisterListener(AddonEvent.PreFinalize, OnFinalize);
     }
 
-    internal void SetHide(bool value)
+    internal void SetHide(bool value, bool uiRendered = false)
     {
-        hide = value; lastDraw = Stopwatch.GetTimestamp(); Update();
+        hide = value; rendered = uiRendered; lastDraw = Stopwatch.GetTimestamp(); Update();
     }
 
     internal void Update()
@@ -35,16 +36,17 @@ internal sealed unsafe class GameUiController : IDisposable
         var manager = &module->RaptureAtkUnitManager.AtkUnitManager;
         GameScale = manager->UiBaseScale;
         var loggedIn = Plugin.Objects.LocalPlayer is not null;
-        var desired = hide && loggedIn && !Plugin.GameGui.GameUiHidden && Stopwatch.GetElapsedTime(lastDraw).TotalMilliseconds < 500;
+        var live = rendered && loggedIn && !Plugin.GameGui.GameUiHidden && Stopwatch.GetElapsedTime(lastDraw).TotalMilliseconds < 500;
+        var desired = live && hide;
         var units = manager->AllLoadedUnitsList;
         for (var i = 0; i < Math.Min((int)units.Count, 256); i++)
         {
             var addon = units.Entries[i].Value;
             if (addon == null || addon->RootNode == null) continue;
-            Apply(addon, desired, loggedIn);
+            Apply(addon, live, desired, loggedIn);
 
         }
-        active = desired;
+        active = live && (hide || Plugin.InstanceConfig.ShowStatus || Plugin.InstanceConfig.ShowTop);
         if (!loggedIn) Layouts.Clear();
     }
 
@@ -53,16 +55,23 @@ internal sealed unsafe class GameUiController : IDisposable
         if (!hide && !active) return;
         var addon = (AtkUnitBase*)Plugin.GameGui.GetAddonByName(args.AddonName).Address;
         if (addon == null || addon->RootNode == null) return;
-        var desired = hide && Plugin.Objects.LocalPlayer is not null && !Plugin.GameGui.GameUiHidden && Stopwatch.GetElapsedTime(lastDraw).TotalMilliseconds < 500;
-        Apply(addon, desired, Plugin.Objects.LocalPlayer is not null);
+        var live = rendered && Plugin.Objects.LocalPlayer is not null && !Plugin.GameGui.GameUiHidden && Stopwatch.GetElapsedTime(lastDraw).TotalMilliseconds < 500;
+        Apply(addon, live, live && hide, Plugin.Objects.LocalPlayer is not null);
     }
 
-    private void Apply(AtkUnitBase* addon, bool desired, bool loggedIn)
+    private void Apply(AtkUnitBase* addon, bool live, bool hideAll, bool loggedIn)
     {
         var name = addon->NameString;
         var node = addon->RootNode;
-        if (loggedIn && !Layouts.ContainsKey(name))
-            Layouts[name] = new GameLayout(addon->X, addon->Y, addon->Scale, node->Width, node->Height, node->IsVisible());
+        if (loggedIn)
+        {
+            if (!Layouts.TryGetValue(name, out var layout))
+                Layouts[name] = new GameLayout(addon->X, addon->Y, addon->Scale, node->Width, node->Height, node->IsVisible());
+            else if (layout.X != addon->X || layout.Y != addon->Y || layout.Scale != addon->Scale || layout.Width != node->Width || layout.Height != node->Height)
+                Layouts[name] = new GameLayout(addon->X, addon->Y, addon->Scale, node->Width, node->Height, layout.Visible);
+        }
+        var config = Plugin.InstanceConfig;
+        var desired = live && GameUiVisibilityPolicy.ShouldHide(name, hideAll, config.NativeCombatWidgets, config.ShowStatus, config.ShowTop);
         if (!desired && !active) return;
         var visible = state.Change(name, (nint)addon, (nint)node, node->IsVisible(), desired);
         if (visible.HasValue) node->ToggleVisibility(visible.Value);
@@ -73,7 +82,7 @@ internal sealed unsafe class GameUiController : IDisposable
     {
         Plugin.Addons.UnregisterListener(OnDraw);
         Plugin.Addons.UnregisterListener(OnFinalize);
-        hide = false; Update();
+        hide = false; rendered = false; Update();
     }
 }
 
