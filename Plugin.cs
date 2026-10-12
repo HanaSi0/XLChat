@@ -18,6 +18,9 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static IDalamudPluginInterface Interface { get; private set; } = null!;
     [PluginService] internal static ICommandManager Commands { get; private set; } = null!;
     [PluginService] internal static IChatGui Chat { get; private set; } = null!;
+    [PluginService] internal static IGameGui GameGui { get; private set; } = null!;
+    [PluginService] internal static IFramework Framework { get; private set; } = null!;
+    [PluginService] internal static IAddonLifecycle Addons { get; private set; } = null!;
     [PluginService] internal static IObjectTable Objects { get; private set; } = null!;
     [PluginService] internal static ITextureProvider Textures { get; private set; } = null!;
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
@@ -28,6 +31,8 @@ public sealed class Plugin : IDalamudPlugin
     internal string ActiveChannel;
     private readonly UserInterface ui;
     private bool wasLoggedIn;
+    internal int HistoryRevision;
+    private readonly OriginalChatVisibility originalChat = new();
 
     public Plugin()
     {
@@ -36,8 +41,10 @@ public sealed class Plugin : IDalamudPlugin
         ActiveChannel = Config.Channels[0].Id;
         ui = new UserInterface(this);
         Commands.AddHandler("/xlinui", new CommandInfo(OnCommand)
-        { HelpMessage = "XLinUI 设置。/xlinui off 关闭全部；/xlinui on 开启。" });
+        { HelpMessage = "XLinUI 设置。/xlinui off 关闭全部；/xlinui on 开启；/xlinui restore 恢复原版聊天。" });
         Chat.ChatMessage += OnChat;
+        Framework.Update += OnUpdate;
+        originalChat.Register();
         Interface.UiBuilder.Draw += Draw;
         Interface.UiBuilder.OpenConfigUi += OpenSettings;
         Interface.UiBuilder.OpenMainUi += OpenSettings;
@@ -49,12 +56,19 @@ public sealed class Plugin : IDalamudPlugin
         {
             case "off": Config.Enabled = false; Save(); break;
             case "on": Config.Enabled = true; Save(); break;
+            case "restore": Config.HideOriginalChat = false; Save(); break;
             default: OpenSettings(); break;
         }
     }
 
+    private void OnUpdate(IFramework framework) => originalChat.Update();
+
     private void OpenSettings() => ui.SettingsOpen = true;
-    internal void Save() => Interface.SavePluginConfig(Config);
+    internal void Save()
+    {
+        Interface.SavePluginConfig(Config);
+        if (!Config.Enabled || !Config.ShowChat || !Config.HideOriginalChat) originalChat.SetDesired(false);
+    }
     internal void Reset()
     {
         Config = new Configuration();
@@ -71,24 +85,29 @@ public sealed class Plugin : IDalamudPlugin
             History.Clear(); Unread.Clear(); ui.ClearInput();
         }
         wasLoggedIn = loggedIn;
-        ui.Draw(loggedIn);
+        var drawn = false;
+        try { ui.Draw(loggedIn); drawn = true; }
+        finally { originalChat.SetDesired(drawn && loggedIn && Config.Enabled && Config.ShowChat && Config.HideOriginalChat && ui.ChatVisible); }
     }
 
     // The API-15 distribution's event signature is validated during compilation.
     private void OnChat(IHandleableChatMessage message)
     {
         var kind = (ushort)message.LogKind;
+        HistoryRevision++;
         // Copy strings immediately; do not retain event-owned objects or native pointers.
         History.Add(new ChatLine(kind, message.Sender.TextValue, message.Message.TextValue, DateTime.Now));
         if (History.Count > 1000) History.RemoveRange(0, History.Count - 1000);
         foreach (var channel in Config.Channels.Where(c => c.Types.Count == 0 || c.Types.Contains(kind)))
-            if (channel.Id != ActiveChannel || !Config.Enabled || !Config.ShowChat)
+            if (channel.Id != ActiveChannel || !Config.Enabled || !Config.ShowChat || !ui.ChatVisible)
                 Unread[channel.Id] = Math.Min(999, Unread.GetValueOrDefault(channel.Id) + 1);
         // Leave handled unchanged: original chat, links and other plugins continue to work.
     }
 
     public void Dispose()
     {
+        Framework.Update -= OnUpdate;
+        originalChat.Dispose();
         Chat.ChatMessage -= OnChat;
         Interface.UiBuilder.Draw -= Draw;
         Interface.UiBuilder.OpenConfigUi -= OpenSettings;

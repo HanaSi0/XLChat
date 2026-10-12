@@ -1,6 +1,6 @@
 <Project Sdk="Dalamud.NET.Sdk/15.0.0">
   <PropertyGroup>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <Author>HanaSi0</Author>
     <Name>XLinUI</Name>
     <Punchline>你的简洁界面：快捷栏、分类聊天、方角技能栏。</Punchline>
@@ -9,4 +9,7 @@
     <Tags>ui;chat;hotbar;personal</Tags>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
   </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="tests/**/*.cs" />
+  </ItemGroup>
 </Project>

@@ -13,6 +13,7 @@ public sealed class Configuration : IPluginConfiguration
     public bool Enabled { get; set; } = true;
     public bool ShowTop { get; set; } = true;
     public bool ShowChat { get; set; } = true;
+    public bool HideOriginalChat { get; set; }
     public bool ShowSkills { get; set; } = true;
     public bool Rounded { get; set; } = true;
     public bool Glass { get; set; } = true;
