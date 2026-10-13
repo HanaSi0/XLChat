@@ -54,6 +54,7 @@ internal sealed partial class UserInterface(Plugin plugin)
     {
         draft = search = tellRecipient = ""; importedLayouts.Clear();
         CloseHotbarEditing();
+        minimapId=0;minimapMarkers.Clear();
         channelDrafts.Clear();filteredChat.Clear();chatCacheRevision=-1;ChatAtBottom=false;chatLabels=null;chatSubmitted=default;noviceJoinSubmitted=default;notice="";expandedChatRows=0;
         bagSlots.Clear(); bagCapacity = 0; bagAvailable = false; lastInventoryRead = default;
         acceptedQuests.Clear(); lastQuestRead = default;
@@ -72,7 +73,9 @@ internal sealed partial class UserInterface(Plugin plugin)
         if (C.Enabled && loggedIn && !Plugin.GameGui.GameUiHidden)
         {
             DrawNativeOutlines();
+            DrawNativeFlatIcons();
             DrawCombatHud();
+            DrawMinimap();
             DrawHotbarEditor();
             if (C.ShowTop || !C.ShowOriginalUi) DrawTop();
             if (C.ShowStatus) DrawStatus();
@@ -309,7 +312,12 @@ internal sealed partial class UserInterface(Plugin plugin)
                     try
                     {
                     changed |= Toggle("小地图方形外框", C.SquareMinimap, v => C.SquareMinimap = v);
-                    ReadableText.TextWrapped("自动追踪 1–10 栏的原生槽位坐标与大小，无须选择单栏；保留原生冷却、拖放、快捷键与提示。小地图仍使用原生圆形内容，方框不改变地图裁切。");
+                    changed |= Toggle("方形地图替代原版小地图", C.RebuildMinimap, v => C.RebuildMinimap = v);
+                    changed |= Toggle("插件图标扁平化", C.FlatIcons, v => C.FlatIcons = v);
+                    changed |= Toggle("普通热键栏技能图标扁平化（实验）", C.FlatNativeIcons, v => C.FlatNativeIcons = v);
+                    changed |= Toggle("标准菜单按钮去除装饰（实验）", C.FlatNativeButtons, v => C.FlatNativeButtons = v);
+                    var shade=C.ReadabilityShade; if(ImGui.SliderFloat("文字背衬强度", ref shade, 0, .8f)){C.ReadabilityShade=shade;changed=true;}
+                    ReadableText.TextWrapped("方形地图读取地图纹理和游戏标记，支持缩放与点击打开地图；资源未就绪时保留原版。图标保留原始轮廓与色彩，减少渐变。特殊窗口和裁切内容保留原版，可逐窗排除。");
                     changed |= Toggle("原生标准窗口统一色调与透明度（实验）", C.StyleNativeWindows, v => C.StyleNativeWindows = v);
                     ReadableText.TextDisabled($"已显示热键栏 {plugin.NativeStyle.ActiveBars.Count} 个，已换肤窗口 {plugin.NativeStyle.StyledWindows.Count} 个");
                     if (ImGui.TreeNode("原生窗口适配审查／逐窗排除"))

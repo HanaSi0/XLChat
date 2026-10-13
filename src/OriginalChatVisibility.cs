@@ -38,7 +38,7 @@ internal sealed unsafe class OriginalChatVisibility : IDisposable
         foreach (var name in Names) Apply(name, hide);
     }
 
-    private void OnPreDraw(AddonEvent type, AddonArgs args) => Update();
+    private void OnPreDraw(AddonEvent type, AddonArgs args) => Apply(args.AddonName, desired && Stopwatch.GetElapsedTime(lastDraw).TotalMilliseconds < 500 && !Plugin.GameGui.GameUiHidden && Plugin.Objects.LocalPlayer is not null);
     private void OnFinalize(AddonEvent type, AddonArgs args) => state.Forget(args.AddonName);
 
     private void Apply(string name, bool hide)

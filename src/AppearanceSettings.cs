@@ -18,8 +18,10 @@ internal sealed partial class UserInterface
         ChatSlider("图片模糊半径",C.ImageBlur,0,32,v=>C.ImageBlur=v,ref changed);
         if(ReadableText.SmallButton("移除图片")){C.BackgroundFile="";if(C.Material==2)C.Material=0;changed=true;}
         ChatSlider("玻璃模糊强度",C.GlassBlur,1,64,v=>C.GlassBlur=v,ref changed);
+        changed|=Toggle("实时玻璃采样（增加 GPU 开销）",C.LiveGlass,v=>{C.LiveGlass=v;Appearance.RefreshGlass();});
+        if(ReadableText.SmallButton("刷新玻璃背景"))Appearance.RefreshGlass();
         ChatSlider("玻璃更新次数／秒",C.GlassRefresh,.5f,4,v=>C.GlassRefresh=v,ref changed,"%.1f");
-        ReadableText.TextWrapped("玻璃通过 Dalamud 公开接口采样游戏主窗口，低分辨率模糊，默认每秒 2 次；不包含 XLinUI 自身。采样失败或移动到其他显示器窗口时回退为颜色背景。关闭插件窗口时停止采样，画面不保存到文件。");
+        ReadableText.TextWrapped("玻璃通过 Dalamud 公开接口采样游戏主窗口，低分辨率模糊，默认按需采样；开启实时采样后按设置频率更新；不包含 XLinUI 自身。采样失败或移动到其他显示器窗口时回退为颜色背景。关闭插件窗口时停止采样，画面不保存到文件。");
         ImGui.Separator();
         changed|=Toggle("使用导入字体",C.UseCustomFont,v=>C.UseCustomFont=v);
         if(ReadableText.Button("从电脑导入字体"))Appearance.Browse(true);

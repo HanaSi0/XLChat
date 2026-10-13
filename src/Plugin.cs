@@ -36,6 +36,7 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static ITextureProvider Textures { get; private set; } = null!;
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
 
+    internal static FlatIcons FlatCache {get;private set;}=null!;
     internal static Configuration InstanceConfig { get; private set; } = null!;
     internal Configuration Config { get; private set; }
     internal readonly List<ChatLine> History = [];
@@ -52,12 +53,14 @@ public sealed class Plugin : IDalamudPlugin
     internal readonly GameUiController GameUi = new();
     internal readonly NativeUiStyling NativeStyle = new();
     internal readonly NativeHotbarLayouts Hotbars = new();
+    internal readonly FlatIcons Flat = new();
 
     public Plugin()
     {
         Config = Interface.GetPluginConfig() as Configuration ?? new Configuration();
         Config.Normalize();
         InstanceConfig = Config;
+        FlatCache=Flat;
         ActiveChannel = Config.ChatActiveChannelId;
         ui = new UserInterface(this);
         Commands.AddHandler("/xlinui", new CommandInfo(OnCommand)
@@ -85,9 +88,10 @@ public sealed class Plugin : IDalamudPlugin
         }
     }
 
+    private long lastPluginDraw=System.Diagnostics.Stopwatch.GetTimestamp(),lastWatchdog;
     private void OnUpdate(IFramework framework)
     {
-        while(pendingChat.TryDequeue(out var line))
+        for(var drained=0;drained<128&&pendingChat.TryDequeue(out var line);drained++)
         {
             History.Add(line); HistoryRevision++;
             if(line.Type==60){LatestChatError=line.Text;LatestChatErrorTime=DateTime.Now;}
@@ -96,9 +100,9 @@ public sealed class Plugin : IDalamudPlugin
                     Unread[channel.Id]=Math.Min(9999,Unread.GetValueOrDefault(channel.Id)+1);
         }
         if(History.Count>Config.ChatHistoryLimit){History.RemoveRange(0,History.Count-Config.ChatHistoryLimit);HistoryRevision++;}
-        GameUi.Update();
-        NativeStyle.Update();
-        originalChat.Update();
+        // UI ownership is updated once after drawing; the watchdog only runs when drawing stops.
+        if(System.Diagnostics.Stopwatch.GetElapsedTime(lastPluginDraw).TotalMilliseconds>500&&System.Diagnostics.Stopwatch.GetElapsedTime(lastWatchdog).TotalMilliseconds>500)
+        {lastWatchdog=System.Diagnostics.Stopwatch.GetTimestamp();GameUi.Update();NativeStyle.Update();originalChat.Update();Hotbars.Release();}
     }
 
     private void OpenSettings() => ui.SettingsOpen = true;
@@ -123,6 +127,7 @@ public sealed class Plugin : IDalamudPlugin
 
     private void Draw()
     {
+        lastPluginDraw=System.Diagnostics.Stopwatch.GetTimestamp();
         var loggedIn = Objects.LocalPlayer is not null;
         if (wasLoggedIn && !loggedIn)
         {
@@ -130,7 +135,7 @@ public sealed class Plugin : IDalamudPlugin
         }
         wasLoggedIn = loggedIn;
         var drawn = false;
-        try { Hotbars.Update(loggedIn && Config.Enabled && !GameGui.GameUiHidden);ui.Draw(loggedIn); drawn = true; }
+        try { Flat.Pump();Hotbars.Update(loggedIn && Config.Enabled && !GameGui.GameUiHidden);ui.Draw(loggedIn); drawn = true; }
         finally
         {
             GameUi.Ready = drawn && Config.Enabled && !GameGui.GameUiHidden ? ui.Ready : HudReady.None;
@@ -171,6 +176,7 @@ public sealed class Plugin : IDalamudPlugin
         Hotbars.Dispose();
         originalChat.Dispose();
         NativeStyle.Dispose();
+        Flat.Dispose();
         GameUi.Dispose();
         Chat.ChatMessageUnhandled -= OnChat;
         Chat.ChatMessageHandled -= OnHandledChat;

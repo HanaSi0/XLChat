@@ -37,6 +37,7 @@ internal sealed partial class UserInterface
         ImGui.SetNextWindowSize(dimensions, ImGuiCond.FirstUseEver);
         ImGui.SetNextWindowPos(viewport.Pos + position, ImGuiCond.FirstUseEver);
         ImportLayout(id, dimensions, native);
+        if(id is "target" or "focus")ImGui.SetNextWindowSizeConstraints(new Vector2(280,220)*ImGuiHelpers.GlobalScale,ImGuiHelpers.MainViewport.Size);
         var visible = ImGui.Begin(name + "###XLinUI" + id, WindowFlags);
         if(visible)Appearance.DrawBackground();
         ImGui.SetWindowFontScale(C.HudFontScale);
@@ -45,7 +46,7 @@ internal sealed partial class UserInterface
     private void DrawActorCard(ICharacter actor, bool focus, Vector2 position)
     {
         var id = focus ? "focus" : "target";
-        var visible = BeginHud(focus ? "焦点" : "目标", id, position, new Vector2(400, 155), focus ? "_FocusTargetInfo" : "_TargetInfoMainTarget", focus ? "_FocusTargetInfo" : "_TargetInfo");
+        var visible = BeginHud(focus ? "焦点" : "目标", id, position, new Vector2(440, 300), focus ? "_FocusTargetInfo" : "_TargetInfoMainTarget", focus ? "_FocusTargetInfo" : "_TargetInfo");
         try
         {
             if (!visible) return;
@@ -114,7 +115,7 @@ internal sealed partial class UserInterface
     }
     private void DrawPlayerStatuses(IBattleChara player)
     {
-        var visible = BeginHud("状态", "effects", new Vector2(30, 80), new Vector2(440, 145), "_StatusEnhancements", "_Status");
+        var visible = BeginHud("状态", "effects", new Vector2(30, 80), new Vector2(440, 260), "_StatusEnhancements", "_Status");
         try
         {
             if (!visible) return;
@@ -124,41 +125,59 @@ internal sealed partial class UserInterface
         }
         finally { EndPanel(); }
     }
-    private bool DrawEffectIcons(System.Collections.Generic.IEnumerable<IStatus> statuses, bool allowCancel)
+    private sealed record EffectData(uint Icon,string Name,string Description,EffectGroup Group,bool CanCancel,bool Dispel,byte Stacks);
+    private readonly System.Collections.Generic.Dictionary<uint,EffectData> effectCache=[];
+    private EffectData? Effect(uint id)
     {
-        var complete = true;
-        var index = 0;
-        var size = C.StatusIconSize * ImGuiHelpers.GlobalScale;
-        var columns = Math.Max(1, (int)(ImGui.GetContentRegionAvail().X / (size + ImGui.GetStyle().ItemSpacing.X)));
-        foreach (var status in statuses.Where(s => s.StatusId != 0))
+        if(effectCache.TryGetValue(id,out var cached))return cached;
+        var row=Plugin.Data.GetExcelSheet<Lumina.Excel.Sheets.Status>().GetRowOrDefault(id);
+        if(row is null)return null;var d=row.Value;
+        var value=new EffectData(d.Icon,d.Name.ToString(),d.Description.ToString(),VisualPolicy.Group(d.StatusCategory,d.IsPermanent,d.IsFcBuff),d.CanStatusOff,d.CanDispel,d.MaxStacks);
+        effectCache[id]=value;return value;
+    }
+    private bool DrawEffectIcons(System.Collections.Generic.IEnumerable<IStatus> statuses,bool allowCancel)
+    {
+        var all=statuses.Where(s=>s.StatusId!=0).ToArray();if(all.Length==0)return true;
+        var available=ImGui.GetContentRegionAvail();if(available.Y<15)return false;
+        var shown=ImGui.BeginChild("classified-effects",new Vector2(0,Math.Max(35,available.Y)),false);
+        var complete=shown;
+        try
         {
-            if (index > 0 && index % columns != 0) ImGui.SameLine();
-            ImGui.PushID(index++);
-            try
+            if(!shown)return false;
+            foreach(var group in new[]{EffectGroup.Buff,EffectGroup.Debuff,EffectGroup.Other})
             {
-                var maybe = Plugin.Data.GetExcelSheet<Lumina.Excel.Sheets.Status>().GetRowOrDefault(status.StatusId);
-                if (maybe is null) { ReadableText.TextDisabled("未知状态 #" + status.StatusId); complete = false; continue; }
-                var data = maybe.Value;
-                var icon = Plugin.Textures.GetFromGameIcon(new GameIconLookup(data.Icon)).GetWrapOrDefault();
-                var pos = ImGui.GetCursorScreenPos();
-                ImGui.InvisibleButton("effect", new Vector2(size, size + ImGui.GetFontSize()));
-                var draw = ImGui.GetWindowDrawList();
-                if (icon is not null) draw.AddImage(icon.Handle, pos, pos + new Vector2(size));
-                else { ReadableText.Draw(draw, pos, 0xFFFFFFFF, "#" + status.StatusId); complete = false; }
-                if (!C.HideBorders && !C.TextOnly) draw.AddRect(pos, pos + new Vector2(size), 0xAA8DB7C3, 0f);
-                ReadableText.Draw(draw, pos + new Vector2(0, size), 0xFFDFE8E8, HudValues.Duration(status.RemainingTime));
-                if (data.MaxStacks > 1 && status.Param > 0)
-                    ReadableText.Draw(draw, pos + new Vector2(size - 14, 0), 0xFFFFFFFF, status.Param.ToString());
-                if (ImGui.IsItemHovered())
-                    ImGui.SetTooltip(data.Name.ToString() + "\n" + data.Description.ToString() + $"\n剩余 {status.RemainingTime:F1}s · 参数 {status.Param}" + (allowCancel ? "\n右键：请求取消可取消的增益；是否允许由游戏决定。" : ""));
-                if (allowCancel && ImGui.IsItemClicked(ImGuiMouseButton.Right))
+                var entries=all.Where(s=>(Effect(s.StatusId)?.Group??EffectGroup.Other)==group).ToArray();if(entries.Length==0)continue;
+                var color=group==EffectGroup.Debuff?new Vector4(1,.68f,.64f,1):group==EffectGroup.Buff?new Vector4(.72f,.95f,.84f,1):new Vector4(.8f,.84f,1,1);
+                ReadableText.TextColored(color,(group==EffectGroup.Buff?"增益":group==EffectGroup.Debuff?"减益":"其他状态")+" · "+entries.Length);
+                var size=C.StatusIconSize*ImGuiHelpers.GlobalScale;
+                var columns=Math.Max(1,(int)(ImGui.GetContentRegionAvail().X/(size+ImGui.GetStyle().ItemSpacing.X)));
+                for(var i=0;i<entries.Length;i++)
                 {
-                    var id = status.StatusId; var source = status.SourceId;
-                    Native(() => GameBridge.CancelStatus(id, source));
+                    if(i>0&&i%columns!=0)ImGui.SameLine();
+                    var status=entries[i];var data=Effect(status.StatusId);ImGui.PushID(i+(int)group*1000);
+                    try
+                    {
+                        var iconId=data?.Icon??0;
+                        if(data is not null&&data.Stacks>1&&status.Param>1&&status.Param<=data.Stacks)iconId+=(uint)status.Param-1;
+                        var icon=iconId==0?null:(C.FlatIcons?plugin.Flat.Get(iconId):null)??Plugin.Textures.GetFromGameIcon(new GameIconLookup(iconId)).GetWrapOrDefault();
+                        var dimensions=VisualPolicy.IconSize(icon?.Width??64,icon?.Height??80,size);
+                        var pos=ImGui.GetCursorScreenPos();ImGui.InvisibleButton("effect",new Vector2(size,dimensions.Y+ImGui.GetFontSize()+3));
+                        var draw=ImGui.GetWindowDrawList();
+                        draw.AddRectFilled(pos-Vector2.One,pos+dimensions+Vector2.One,0xc01a1510);
+                        if(icon is not null)draw.AddImage(icon.Handle,pos,pos+dimensions);else{ReadableText.Draw(draw,pos,0xffffffff,"?");complete=false;}
+                        if(!C.HideBorders)draw.AddRect(pos,pos+dimensions,ImGui.ColorConvertFloat4ToU32(color),0f);
+                        ReadableText.Draw(draw,pos+new Vector2(0,dimensions.Y),0xfff4f4f4,HudValues.Duration(status.RemainingTime));
+                        if(data is not null&&data.Stacks>1&&status.Param>0)ReadableText.Draw(draw,pos+new Vector2(size-12,2),0xffffffff,status.Param.ToString());
+                        if(data?.Dispel==true)draw.AddRectFilled(pos+new Vector2(2,-3),pos+new Vector2(Math.Max(3,size-2),-1),0xffffffff);
+                        if(ImGui.IsItemHovered())ImGui.SetTooltip((data?.Name??"未知状态")+"\n"+(data?.Description??"")+$"\n剩余 {status.RemainingTime:F1}s"+(allowCancel&&data?.CanCancel==true?"\n右键取消":""));
+                        if(allowCancel&&data?.CanCancel==true&&ImGui.IsItemClicked(ImGuiMouseButton.Right))Native(()=>GameBridge.CancelStatus(status.StatusId,status.SourceId));
+                    }
+                    finally{ImGui.PopID();}
                 }
+                ImGui.Spacing();
             }
-            finally { ImGui.PopID(); }
         }
+        finally{ImGui.EndChild();}
         return complete;
     }
     private void DrawModernParty()

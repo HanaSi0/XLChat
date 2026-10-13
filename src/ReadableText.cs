@@ -72,6 +72,8 @@ internal static class ReadableText
     private static void Outline(Vector2 pos, string text, float wrap)
     {
         var draw = ImGui.GetWindowDrawList(); var font = ImGui.GetFont(); var size = ImGui.GetFontSize();
+        var c=Plugin.InstanceConfig;
+        if(!c.TextOnly&&c.ReadabilityShade>0){var bounds=ImGui.CalcTextSize(text,false,wrap);draw.AddRectFilled(pos-new Vector2(1),pos+bounds+new Vector2(1),ImGui.ColorConvertFloat4ToU32(new Vector4(0,0,0,c.ReadabilityShade)));}
         draw.AddText(font, size, pos + new Vector2(-1, 0), 0xDF000000, text, wrap);
         draw.AddText(font, size, pos + new Vector2(1, 0), 0xDF000000, text, wrap);
         draw.AddText(font, size, pos + new Vector2(0, -1), 0xDF000000, text, wrap);

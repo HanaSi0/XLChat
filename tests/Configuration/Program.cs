@@ -113,3 +113,9 @@ Console.WriteLine("PASS: no matching menu never reads Icon from an unreadable de
 var iconRows=new[]{(Name:"其他菜单",Icon:11),(Name:"角色设置",Icon:22)};
 if(TopIconPolicy.Find(iconRows,r=>r.Name=="角色设置",r=>r.Icon)!=22)throw new Exception("Matched menu icon changed");
 Console.WriteLine("PASS: matching menu retains its actual icon");
+
+var modernVisuals=new Configuration{MinimapSize=float.NaN,MinimapZoom=900,ReadabilityShade=-1};modernVisuals.Normalize();
+if(modernVisuals.MinimapSize!=240||modernVisuals.MinimapZoom!=4||modernVisuals.ReadabilityShade!=0)throw new Exception("Invalid modern visual bounds");
+Console.WriteLine("PASS: map dimensions zoom and readability reject invalid settings");
+if(new Configuration().LiveGlass)throw new Exception("Periodic GPU readback should be opt-in");
+Console.WriteLine("PASS: continuous glass sampling defaults off");

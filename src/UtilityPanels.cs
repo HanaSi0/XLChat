@@ -375,7 +375,7 @@ internal sealed partial class UserInterface
     private void GameIcon(uint id, float size)
     {
         if (C.TextOnly) { ImGui.Dummy(new Vector2(0, ImGui.GetTextLineHeight())); return; }
-        var texture = Plugin.Textures.GetFromGameIcon(new GameIconLookup(id)).GetWrapOrDefault();
+        var texture = (C.FlatIcons?plugin.Flat.Get(id):null)??Plugin.Textures.GetFromGameIcon(new GameIconLookup(id)).GetWrapOrDefault();
         if (texture is null) ImGui.Dummy(new Vector2(size) * ImGuiHelpers.GlobalScale);
         else ImGui.Image(texture.Handle, new Vector2(size) * ImGuiHelpers.GlobalScale);
     }

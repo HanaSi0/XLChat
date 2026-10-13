@@ -20,9 +20,7 @@ internal sealed partial class UserInterface
             try
             {
                 (gil, weather, serverTime) = GameBridge.ReadTopData();
-                var equipment = GameBridge.ReadInventory(FFXIVClientStructs.FFXIV.Client.Game.InventoryType.EquippedItems);
-                minimumDurability = equipment.Count == 0 ? 0 : equipment.Min(i => i.Condition);
-                maximumSpiritbond = equipment.Count == 0 ? 0 : equipment.Max(i => i.Spiritbond);
+                (minimumDurability,maximumSpiritbond)=GameBridge.EquipmentSummary();
                 telemetryAvailable = true;
             }
             catch (Exception ex) { Plugin.Log.Debug(ex, "顶部状态暂不可用"); }
@@ -154,7 +152,7 @@ internal sealed partial class UserInterface
                 if(C.TopIcons)
                 {
                     var iconPos=new Vector2(x,pos.Y+(rowHeight-iconSize)/2);var id=TopGameIcon(item.Key??"");
-                    var texture=id==0?null:Plugin.Textures.GetFromGameIcon(new GameIconLookup(id)).GetWrapOrDefault();
+                    var texture=id==0?null:(C.FlatIcons?plugin.Flat.Get(id):null)??Plugin.Textures.GetFromGameIcon(new GameIconLookup(id)).GetWrapOrDefault();
                     if(texture is not null)draw.AddImage(texture.Handle,iconPos,iconPos+new Vector2(iconSize));
                     else using(Plugin.Interface.UiBuilder.IconFontHandle.Push())
                     {

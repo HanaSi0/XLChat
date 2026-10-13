@@ -141,3 +141,13 @@ transforms.Original("_ActionBar",1,2,new(100,200),1);transforms.Forget("_ActionB
 Check(transforms.Restore("_ActionBar",1,2) is null,"finalizing hotbar forgets owned native transform");
 transforms.Original("_ActionBar",1,2,new(100,200),1);transforms.Original("_ActionBar09",3,4,new(600,900),.8f);
 Check(transforms.Restore("_ActionBar",1,2)?.Scale==1&&transforms.Restore("_ActionBar09",3,4)?.Scale==.8f,"multiple bars restore independent originals");
+
+Check(VisualPolicy.IconSize(64,80,32)==new Vector2(32,40),"status artwork preserves portrait aspect ratio");
+Check(VisualPolicy.Group(2,true,true)==EffectGroup.Debuff,"debuff category takes precedence over permanent flags");
+Check(VisualPolicy.Group(1,false,false)==EffectGroup.Buff&&VisualPolicy.Group(1,true,false)==EffectGroup.Other,"permanent status grouped separately");
+var flat=VisualPolicy.FlattenBgra(new byte[]{32,64,96,0},1,1);
+Check(flat.SequenceEqual(new byte[]{96,64,32,0}),"flat icons preserve palette channels and transparent alpha");
+Check(VisualPolicy.MapUv(Vector2.Zero,100,Vector2.Zero)==new Vector2(.5f),"map origin maps to texture center");
+var crop=VisualPolicy.Crop(Vector2.Zero,1);
+Check(crop.Min==Vector2.Zero&&crop.Max.X<=1&&crop.Max.Y<=1,"edge map crop stays within texture");
+Check(!HudReplacementPolicy.ShouldHide("_NaviMap",HudReady.None)&&HudReplacementPolicy.ShouldHide("_NaviMap",HudReady.Minimap),"map replacement hides original only when ready");

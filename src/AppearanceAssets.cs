@@ -74,16 +74,18 @@ internal sealed class AppearanceAssets : IDisposable
         }
         if(font?.LoadException is {} error)Status="字体构建失败，使用默认字体："+error.Message;
         var needGlass=active&&config.Material==3&&backgroundRequested; backgroundRequested=false;
-        if(needGlass&&glassTask is null&&DateTime.UtcNow>=nextSample)
+        if(needGlass&&glassTask is null&&(config.LiveGlass||glassNeedsRefresh)&&DateTime.UtcNow>=nextSample)
         {
-            nextSample=DateTime.UtcNow.AddSeconds(1/config.GlassRefresh);
+            glassNeedsRefresh=false;nextSample=DateTime.UtcNow.AddSeconds(1/config.GlassRefresh);
             var viewport=ImGuiHelpers.MainViewport;
             glassTask=Capture(viewport.ID,viewport.Size,config.GlassBlur,cancellation.Token);
         }
-        if(!needGlass){glass?.Dispose();glass=null;}
+        if(!needGlass){glass?.Dispose();glass=null;glassNeedsRefresh=true;}
     }
     internal IDisposable? PushFont()=>font?.Push();
     internal void DrawDialog()=>dialog.Draw();
+    internal void RefreshGlass(){nextSample=DateTime.MinValue;glassNeedsRefresh=true;}
+    private bool glassNeedsRefresh=true;
     private void Complete(ref Task<IDalamudTextureWrap>? task,ref IDalamudTextureWrap? current)
     {
         if(task is null||!task.IsCompleted)return;

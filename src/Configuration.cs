@@ -19,6 +19,14 @@ public sealed class Configuration : IPluginConfiguration
     public float ImageBlur { get; set; }
     public int ImageFit { get; set; }
     public float GlassBlur { get; set; } = 20;
+    public bool LiveGlass { get; set; }
+    public bool FlatIcons { get; set; } = true;
+    public bool FlatNativeIcons { get; set; } = true;
+    public bool FlatNativeButtons { get; set; } = true;
+    public bool RebuildMinimap { get; set; } = true;
+    public float MinimapSize { get; set; } = 240;
+    public float MinimapZoom { get; set; } = 1;
+    public float ReadabilityShade { get; set; } = .35f;
     public float GlassRefresh { get; set; } = 2;
     public bool UseCustomFont { get; set; }
     public string FontFile { get; set; } = "";
@@ -153,6 +161,7 @@ public sealed class Configuration : IPluginConfiguration
 
     public void Normalize()
     {
+        MinimapSize=Bound(MinimapSize,160,600,240);MinimapZoom=Bound(MinimapZoom,.5f,4,1);ReadabilityShade=Bound(ReadabilityShade,0,.8f,.35f);
         Material=Math.Clamp(Material,0,3);ImageFit=Math.Clamp(ImageFit,0,1);
         BackgroundFile??="";FontFile??="";
         BackgroundOpacity=Clamp(BackgroundOpacity);BackgroundTintOpacity=Clamp(BackgroundTintOpacity);

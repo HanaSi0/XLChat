@@ -1,11 +1,12 @@
 using System;
 namespace XLinUI;
 [Flags]
-internal enum HudReady { None = 0, Target = 1, Focus = 2, PlayerCast = 4, Statuses = 8, Party = 16, Resources = 32, Top = 64 }
+internal enum HudReady { None = 0, Target = 1, Focus = 2, PlayerCast = 4, Statuses = 8, Party = 16, Resources = 32, Top = 64, Minimap = 128 }
 internal static class HudReplacementPolicy
 {
     internal static bool ShouldHide(string name, HudReady ready) => name switch
     {
+        "_NaviMap" => (ready & HudReady.Minimap) != 0,
         "_Parameter" or "Parameter" => (ready & HudReady.Resources) != 0,
         "_DTR" or "DTR" => (ready & HudReady.Top) != 0,
         "_TargetInfo" or "_TargetInfoMainTarget" or "_TargetInfoCastBar" or "_TargetInfoBuffDebuff" => (ready & HudReady.Target) != 0,

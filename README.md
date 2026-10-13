@@ -8,7 +8,7 @@
 
 ## 安装
 
-适用于 **国服 soil XIVLauncher / Dalamud API 15**，当前版本 **0.1.1**。
+适用于 **国服 soil XIVLauncher / Dalamud API 15**，当前版本 **0.2.0**。
 
 1. 打开 Dalamud 设置 → 实验性 → 自定义插件仓库。
 2. 添加下面的地址，保存并刷新插件列表。
@@ -18,7 +18,7 @@
 https://raw.githubusercontent.com/HanaSi0/XLinUI/main/pluginmaster.json
 ```
 
-[手动下载](https://github.com/HanaSi0/XLinUI/releases/download/v0.1.1/XLinUI.zip) · [版本页面](https://github.com/HanaSi0/XLinUI/releases/tag/v0.1.1)
+[手动下载](https://github.com/HanaSi0/XLinUI/releases/download/v0.2.0/XLinUI.zip) · [版本页面](https://github.com/HanaSi0/XLinUI/releases/tag/v0.2.0)
 
 以前用本地开发路径加载过旧版的亲友，先停用旧插件、移除旧 DLL 路径，再安装这个版本。旧高版本不会自动降级。已经通过仓库安装的亲友，刷新列表后更新即可。
 
@@ -28,7 +28,8 @@ https://raw.githubusercontent.com/HanaSi0/XLinUI/main/pluginmaster.json
 - **顶部栏**：图标快捷入口，金币、装备状态、时间等信息靠右显示，每项都能自己开关。
 - **热键栏**：支持普通 1–10 栏，独立移动和缩放；Shift 网格吸附，Ctrl 多选移动，保留原版技能拖入。
 - **外观**：圆角或直角、颜色、透明度、玻璃背景，以及从电脑导入图片和字体。
-- **战斗界面**：简洁生命／魔力、目标、读条与状态显示，各模块可单独开关。
+- **小地图**：方形地图、游戏标记、滚轮缩放和点击打开地图；资源未加载时保留原版。
+- **战斗界面**：简洁生命／魔力、目标、读条与状态显示，各模块可单独开关；状态图标按原比例绘制，分为增益、减益和其他。
 
 ## 开始使用
 
@@ -39,3 +40,11 @@ https://raw.githubusercontent.com/HanaSi0/XLinUI/main/pluginmaster.json
 想暂时恢复界面，输入 **`/xlinui off`**；重新开启用 **`/xlinui on`**。部分游戏窗口仍使用原版，这个插件会继续根据亲友使用情况完善。
 
 有问题或建议，可以直接告诉我，或[在这里留言](https://github.com/HanaSi0/XLinUI/issues)。
+
+## 本次更新
+
+减少重复 UI 扫描，图标采用后台转换和有界缓存；玻璃背景默认按需采样，实时模式可在设置中开启。新增可调文字背衬，改善透明背景上的可读性。
+
+扁平化保留游戏图标的轮廓与色彩，减少渐变；普通热键栏可独立开关，标准菜单可去除装饰。通用滚动列表、特殊窗口及小地图的天气／楼层等特殊组件仍保留原版入口，尚未全部重绘。方形地图点击可打开完整游戏地图。
+
+已经通过 API 15 编译和自动检查，仍需要 soil 客户端验证帧时间、技能冷却叠层及各地图标记位置。

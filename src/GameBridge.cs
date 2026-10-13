@@ -166,6 +166,18 @@ internal static unsafe class GameBridge
         }
         return rows;
     }
+    internal static (float Durability,float Spiritbond) EquipmentSummary()
+    {
+        var manager=InventoryManager.Instance();if(manager==null)return default;
+        var container=manager->GetInventoryContainer(InventoryType.EquippedItems);if(container==null)return default;
+        var minimum=100f;var maximum=0f;var found=false;
+        for(var i=0;i<container->Size;i++)
+        {
+            var item=container->GetInventorySlot(i);if(item==null||item->ItemId==0)continue;
+            minimum=Math.Min(minimum,item->Condition/300f);maximum=Math.Max(maximum,item->SpiritbondOrCollectability/100f);found=true;
+        }
+        return found?(minimum,maximum):default;
+    }
     internal static (uint Gil, byte Weather, long ServerTime) ReadTopData()
     {
         var inventory = InventoryManager.Instance();
