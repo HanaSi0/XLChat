@@ -4,7 +4,7 @@ namespace XLinUI;
 internal static class SurfacePolicy
 {
     internal static float PanelAlpha(bool forceTransparent, bool textOnly, bool glass, float opacity) =>
-        forceTransparent || textOnly || !glass ? 0 : Math.Clamp(float.IsFinite(opacity) ? opacity : .88f, 0, 1);
+        forceTransparent || textOnly || !glass ? 0 : Math.Clamp(float.IsFinite(opacity) ? opacity : 1, 0, 1);
     internal static byte NativeAlpha(byte original, bool forceTransparent, bool textOnly, bool glass, float opacity) =>
         (byte)(original * PanelAlpha(forceTransparent, textOnly, glass, opacity));
     internal static Vector3 ReadableColor(Vector3 color)

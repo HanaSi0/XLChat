@@ -125,7 +125,7 @@ internal sealed class AppearanceAssets : IDisposable
     }
     internal void DrawBackground()
     {
-        if(config.Material==0||config.TextOnly)return;
+        if(config.Material==0||config.TextOnly||config.ForceTransparentPanels||!config.Glass)return;
         if(config.Material==3)backgroundRequested=true;
         var pos=ImGui.GetWindowPos();var size=ImGui.GetWindowSize();var list=ImGui.GetWindowDrawList();var end=pos+size;
         var rounding=config.Rounded?10f*ImGuiHelpers.GlobalScale:0f;list.PushClipRect(pos,end,false);

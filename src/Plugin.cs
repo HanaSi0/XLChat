@@ -65,6 +65,7 @@ public sealed class Plugin : IDalamudPlugin
     {
         Config = Interface.GetPluginConfig() as Configuration ?? new Configuration();
         Config.Normalize();
+        if(Config.Enabled&&Config.OpaqueOnEnable)Config.ApplyOpaqueBackground();
         InstanceConfig = Config;
         FlatCache=Flat;ButtonCache=Buttons;NativeRedraw=Redraw;
         ActiveChannel = Config.ChatActiveChannelId;
@@ -90,7 +91,7 @@ public sealed class Plugin : IDalamudPlugin
         switch (args.Trim().ToLowerInvariant())
         {
             case "off": Config.Enabled = false; Save(); break;
-            case "on": Config.Enabled = true; Save(); break;
+            case "on": Config.Enabled = true;if(Config.OpaqueOnEnable)Config.ApplyOpaqueBackground(); Save(); break;
             case "perf": ui.PerformanceOpen=true; Log.Information("{Report}",Metrics.Report()); break;
             case "restore": Config.HideOriginalChat = false; Config.ShowOriginalUi = true; Save(); break;
             default: OpenSettings(); break;

@@ -10,14 +10,14 @@ internal sealed partial class UserInterface
         var color=C.BackgroundColor;if(ImGui.ColorEdit3("背景与玻璃颜色",ref color)){C.BackgroundColor=color;changed=true;}
         var text=C.ForegroundColor;if(ImGui.ColorEdit3("正文文字颜色",ref text)){C.ForegroundColor=text;changed=true;}
         var accent=C.Tint;if(ImGui.ColorEdit3("按钮与强调色",ref accent)){C.Tint=accent;changed=true;}
-        ChatSlider("背景不透明度（0为透明）",C.BackgroundOpacity,0,1,v=>C.BackgroundOpacity=v,ref changed,"%.2f");
+        ChatSlider("背景不透明度（0为透明）",C.BackgroundOpacity,0,1,v=>{C.BackgroundOpacity=v;C.Opacity=v;},ref changed,"%.2f");
         ChatSlider("图片／玻璃颜色覆盖",C.BackgroundTintOpacity,0,1,v=>C.BackgroundTintOpacity=v,ref changed,"%.2f");
         if(ReadableText.Button("从电脑导入背景图片"))Appearance.Browse(false);
         ReadableText.TextWrapped(string.IsNullOrEmpty(C.BackgroundFile)?"未导入背景图片":System.IO.Path.GetFileName(C.BackgroundFile));
         var fit=C.ImageFit;if(ImGui.Combo("图片填充方式",ref fit,new[]{"保持比例并居中裁切","拉伸铺满"},2)){C.ImageFit=fit;changed=true;}
         ChatSlider("图片模糊半径",C.ImageBlur,0,32,v=>C.ImageBlur=v,ref changed);
         if(ReadableText.SmallButton("移除图片")){C.BackgroundFile="";if(C.Material==2)C.Material=0;changed=true;}
-        ChatSlider("玻璃模糊强度",C.GlassBlur,1,64,v=>C.GlassBlur=v,ref changed);
+        ChatSlider("玻璃模糊强度",C.GlassBlur,1,64,v=>{C.GlassBlur=v;Appearance.RefreshGlass();},ref changed);
         changed|=Toggle("实时玻璃采样（增加 GPU 开销）",C.LiveGlass,v=>{C.LiveGlass=v;Appearance.RefreshGlass();});
         if(ReadableText.SmallButton("刷新玻璃背景"))Appearance.RefreshGlass();
         ChatSlider("玻璃更新次数／秒",C.GlassRefresh,.5f,4,v=>C.GlassRefresh=v,ref changed,"%.1f");

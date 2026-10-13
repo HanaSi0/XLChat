@@ -232,6 +232,8 @@ internal sealed partial class UserInterface(Plugin plugin)
                 {
                     try
                     {
+                    changed |= Toggle("每次开启时使用不透明背景", C.OpaqueOnEnable,v=>C.OpaqueOnEnable=v);
+                    if(ReadableText.Button("立即使用不透明背景")){C.ApplyOpaqueBackground();changed=true;}
                     changed |= Toggle("锁定窗口位置与尺寸", C.LockWindows, v => C.LockWindows = v);
                     changed |= Toggle("隐藏边框", C.HideBorders, v => C.HideBorders = v);
                     changed |= Toggle("纯文字模式（透明背景、隐藏边框）", C.TextOnly, v => C.TextOnly = v);
@@ -246,8 +248,8 @@ internal sealed partial class UserInterface(Plugin plugin)
                     if (ImGui.SliderFloat("战斗 HUD 字号比例", ref hudFont, .8f, 1.6f, "%.2f")) { C.HudFontScale = hudFont; changed = true; }
                     changed |= Toggle("显示面板背景", C.Glass, v => C.Glass = v);
                     ReadableText.TextDisabled("强制无背景时不透明度滑块不生效；进度条和图标仍保留。未启用强制无背景时可调背景透明度。");
-                    var opacity = C.Opacity;
-                    if (ImGui.SliderFloat("背景不透明度", ref opacity, 0, 1, "%.2f")) { C.Opacity = opacity; changed = true; }
+                    var opacity = C.Material==0?C.Opacity:C.BackgroundOpacity;
+                    if (ImGui.SliderFloat("背景不透明度", ref opacity, 0, 1, "%.2f")) { C.Opacity = C.BackgroundOpacity = opacity; changed = true; }
                     var tint = C.Tint;
                     if (ImGui.ColorEdit3("自定义色调", ref tint)) { C.Tint = tint; changed = true; }
                     }
@@ -262,7 +264,7 @@ internal sealed partial class UserInterface(Plugin plugin)
                 {
                     try
                     {
-                    changed |= Toggle("启用 XLinUI", C.Enabled, v => C.Enabled = v);
+                    changed |= Toggle("启用 XLinUI", C.Enabled, v => { C.Enabled = v;if(v&&C.OpaqueOnEnable)C.ApplyOpaqueBackground(); });
                     changed |= Toggle("显示原游戏 UI（关闭为实验性全隐藏）", C.ShowOriginalUi, v => C.ShowOriginalUi = v);
                     changed |= Toggle("游戏原版热键栏与状态组件", C.NativeCombatWidgets, v => C.NativeCombatWidgets = v);
                     changed |= Toggle("简洁生命/魔力状态条", C.ShowStatus, v => C.ShowStatus = v);

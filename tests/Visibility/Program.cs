@@ -67,7 +67,7 @@ Check(!HudValues.ValidCast(float.NaN,2) && !HudValues.ValidCast(1,0) && HudValue
 Check(SurfacePolicy.PanelAlpha(true,false,true,1)==0,"forced transparent panels override full opacity without text-only mode");
 Check(SurfacePolicy.NativeAlpha(255,true,false,true,1)==0,"native background becomes transparent independently of its opacity slider");
 Check(SurfacePolicy.NativeAlpha(100,false,false,true,.5f)==50,"native transparency respects its original alpha");
-Check(SurfacePolicy.PanelAlpha(false,false,true,float.NaN)==.88f && SurfacePolicy.PanelAlpha(false,false,true,2)==1,"invalid opacity has bounded fallback");
+Check(SurfacePolicy.PanelAlpha(false,false,true,float.NaN)==1 && SurfacePolicy.PanelAlpha(false,false,true,2)==1,"invalid opacity has bounded fallback");
 var readable=SurfacePolicy.ReadableColor(new System.Numerics.Vector3(.1f,.2f,.3f));
 Check(.2126f*readable.X+.7152f*readable.Y+.0722f*readable.Z>=.719f && readable.Z>readable.X,"dark accent is brightened while preserving hue order");
 Check(SurfacePolicy.ReadableColor(System.Numerics.Vector3.One)==System.Numerics.Vector3.One,"already bright text is unchanged");

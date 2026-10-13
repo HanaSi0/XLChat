@@ -8,7 +8,7 @@
 
 ## 安装
 
-适用于 **国服 soil XIVLauncher / Dalamud API 15**，当前版本 **0.3.1**。
+适用于 **国服 soil XIVLauncher / Dalamud API 15**，当前版本 **0.3.2**。
 
 1. 打开 Dalamud 设置 → 实验性 → 自定义插件仓库。
 2. 添加下面的地址，保存并刷新插件列表。
@@ -18,7 +18,7 @@
 https://raw.githubusercontent.com/HanaSi0/XLinUI/main/pluginmaster.json
 ```
 
-[手动下载](https://github.com/HanaSi0/XLinUI/releases/download/v0.3.1/XLinUI.zip) · [版本页面](https://github.com/HanaSi0/XLinUI/releases/tag/v0.3.1)
+[手动下载](https://github.com/HanaSi0/XLinUI/releases/download/v0.3.2/XLinUI.zip) · [版本页面](https://github.com/HanaSi0/XLinUI/releases/tag/v0.3.2)
 
 以前用本地开发路径加载过旧版的亲友，先停用旧插件、移除旧 DLL 路径，再安装这个版本。旧高版本不会自动降级。已经通过仓库安装的亲友，刷新列表后更新即可。
 
@@ -43,10 +43,8 @@ https://raw.githubusercontent.com/HanaSi0/XLinUI/main/pluginmaster.json
 
 ## 本次更新
 
-修复分类名称输入一个字符就失焦：固定树节点 ID，保留编辑草稿，编辑完成再保存。减少配置反复保存和原生节点扫描。
+加载或开启插件时默认使用不透明背景，聊天跟随全局背景。外观设置新增“每次开启时使用不透明背景”和“立即使用不透明背景”；关闭前者后可保存自己的透明度设置。
 
-崩溃报告确认，0.3.0 在按 Enter 发送时进入游戏聊天处理并触发原生访问异常。本版暂停该发送接口：Enter／“复制”会复制包含频道的完整聊天指令、保留草稿并显示原版聊天，请在原版聊天粘贴后发送。原生热键栏显示命令也暂停，可使用原版 HUD 编辑器。
+修复素材背景与隐藏背景开关的冲突，统一背景透明度滑块，修改玻璃模糊强度时重新采样。
 
-暂停原生共享 GPU 纹理改写及其扫描、生成任务。原生图标、按钮保留原版；插件自有图标与铺满方形视口的小地图保留。完全重绘仍未完成。
-
-更新后请完整重启游戏，清除旧版本的原生状态；如果仍有卡顿，运行 **`/xlinui perf`**，复制诊断反馈。自动检查通过不代表客户端卡顿已消除或原生接口已适配。
+0.3.1 的稳定性措施继续保留：原生直接发送暂停，Enter／复制按钮将完整指令复制到剪贴板并显示原版聊天；原生共享纹理改写仍暂停。卡顿和完全重绘仍需继续适配。

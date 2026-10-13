@@ -11,7 +11,7 @@ Console.WriteLine("PASS: settings, custom channels and original UI option roundt
 if (!JsonConvert.DeserializeObject<Configuration>("{}")!.ShowOriginalUi) throw new Exception("Old settings unexpectedly hide original UI");
 Console.WriteLine("PASS: legacy settings keep original UI visible");
 restored.Opacity = float.NaN; restored.Hotbar = 99; restored.Channels.Clear(); restored.Normalize();
-if (restored.Opacity != .88f || restored.Hotbar != 9 || restored.Channels.Count == 0) throw new Exception("Normalization failed");
+if (restored.Opacity != 1 || restored.Hotbar != 9 || restored.Channels.Count == 0) throw new Exception("Normalization failed");
 Console.WriteLine("PASS: invalid settings recovery");
 
 restored.ChatWidth=float.NaN;restored.ChatHeight=-10;restored.ChatSidebarWidth=999;restored.ChatFontScale=20;restored.Opacity=0;restored.Normalize();
@@ -44,15 +44,15 @@ if(customModern.ModernTarget||customModern.ModernFocus||customModern.ModernStatu
 Console.WriteLine("PASS: existing explicit module opt-outs remain disabled on update");
 
 var transparent=new Configuration();
-if(!transparent.ForceTransparentPanels||!transparent.ForceTransparentNative||!transparent.TextOutline||!transparent.NativeTextOutline||!transparent.HighContrastText||transparent.TextOnly||transparent.ShowEmptyStatuses)throw new Exception("Transparency defaults failed");
-Console.WriteLine("PASS: default transparent mode keeps icon/bar mode and hides empty status placeholders");
+if(transparent.ForceTransparentPanels||transparent.ForceTransparentNative||transparent.BackgroundOpacity!=1||transparent.Opacity!=1||!transparent.TextOutline||!transparent.NativeTextOutline||!transparent.HighContrastText||transparent.TextOnly||transparent.ShowEmptyStatuses)throw new Exception("Transparency defaults failed");
+Console.WriteLine("PASS: default opaque mode keeps icon/bar mode and hides empty status placeholders");
 transparent.ForceTransparentNative=false;transparent.ForceTransparentPanels=false;transparent.HudFontScale=1.3f;
 var transparentCopy=JsonConvert.DeserializeObject<Configuration>(JsonConvert.SerializeObject(transparent))!;transparentCopy.Normalize();
 if(transparentCopy.ForceTransparentPanels||transparentCopy.ForceTransparentNative||transparentCopy.HudFontScale!=1.3f)throw new Exception("Transparency choices did not persist");
 Console.WriteLine("PASS: explicit transparency opt-outs and HUD font scale persist");
 transparent.HudFontScale=float.PositiveInfinity;transparent.Normalize();if(transparent.HudFontScale!=1.05f)throw new Exception("HUD font bounds failed");
-transparent.ApplyModernPreset();if(!transparent.ForceTransparentPanels||!transparent.ForceTransparentNative||transparent.TextOnly)throw new Exception("Updated preset failed");
-Console.WriteLine("PASS: modern preset uses transparent backgrounds without dropping resource bars");
+transparent.ApplyModernPreset();if(transparent.ForceTransparentPanels||transparent.ForceTransparentNative||transparent.BackgroundOpacity!=1||transparent.Opacity!=1||transparent.TextOnly)throw new Exception("Updated preset failed");
+Console.WriteLine("PASS: modern preset uses opaque backgrounds without dropping resource bars");
 
 var chat = new Configuration { ChatWidth = 1024, ChatHeight = 600, ChatSidebarWidth = 230, ChatNavigation = ChatNavigation.Right, ChatComposerHeight = 180, ChatHeaderFontScale = 1.3f, ChatInputWidth=220, ChatBackground = ChatBackground.Custom, ChatBackgroundOpacity=.3f, NativeInteractions=false };
 var profile=ChatLayoutProfile.Capture(chat);chat.ChatWidth=400;chat.ChatInputWidth=0;chat.ChatSidebarWidth=80;chat.ChatNavigation=ChatNavigation.Hidden;profile.Values["NativeInteractions"]="true";profile.Values["ChatInputHeight"]="999";profile.Apply(chat);
@@ -83,8 +83,8 @@ var assetConfig=new Configuration{Material=2,BackgroundFile="C:/素材/背景.pn
 var assetCopy=JsonConvert.DeserializeObject<Configuration>(JsonConvert.SerializeObject(assetConfig))!;assetCopy.Normalize();
 if(assetCopy.BackgroundFile!=assetConfig.BackgroundFile||assetCopy.FontFile!=assetConfig.FontFile||!assetCopy.UseCustomFont||assetCopy.FontSize!=24||assetCopy.BackgroundColor!=assetConfig.BackgroundColor)throw new Exception("Asset settings roundtrip failed");
 Console.WriteLine("PASS: local asset paths font and material colors persist");
-if(JsonConvert.DeserializeObject<Configuration>("{}")!.Material!=0)throw new Exception("Legacy material changed unexpectedly");
-Console.WriteLine("PASS: upgrades keep previous transparent material by default");
+if(JsonConvert.DeserializeObject<Configuration>("{}")!.Material!=1)throw new Exception("Legacy material changed unexpectedly");
+Console.WriteLine("PASS: missing material setting selects solid background by default");
 
 var topConfig=new Configuration{TopIconSize=float.NaN,TopGap=-1,TopMaxLabelWidth=9999};topConfig.TopSections["currency"]=false;topConfig.TopPinned["currency"]=true;topConfig.TopPinned["map"]=true;
 var topCopy=JsonConvert.DeserializeObject<Configuration>(JsonConvert.SerializeObject(topConfig))!;topCopy.Normalize();
@@ -119,3 +119,11 @@ if(modernVisuals.MinimapSize!=240||modernVisuals.MinimapZoom!=4||modernVisuals.R
 Console.WriteLine("PASS: map dimensions zoom and readability reject invalid settings");
 if(new Configuration().LiveGlass)throw new Exception("Periodic GPU readback should be opt-in");
 Console.WriteLine("PASS: continuous glass sampling defaults off");
+
+var upgrade=new Configuration{Version=6,ForceTransparentPanels=true,ForceTransparentNative=true,TextOnly=true,Opacity=0};upgrade.Normalize();
+if(upgrade.Version!=7||upgrade.ForceTransparentPanels||upgrade.ForceTransparentNative||upgrade.TextOnly||upgrade.Opacity!=1||upgrade.ChatBackground!=ChatBackground.Global)throw new Exception("Opaque upgrade failed");
+Console.WriteLine("PASS: legacy background migration applies opaque startup without leaving hidden-background flags");
+var customAlpha=new Configuration{OpaqueOnEnable=false,Opacity=.2f,BackgroundOpacity=.3f,ChatBackground=ChatBackground.Custom,ChatBackgroundOpacity=.4f};customAlpha.Normalize();
+var alphaCopy=JsonConvert.DeserializeObject<Configuration>(JsonConvert.SerializeObject(customAlpha))!;alphaCopy.Normalize();
+if(alphaCopy.OpaqueOnEnable||alphaCopy.Opacity!=.2f||alphaCopy.BackgroundOpacity!=.3f||alphaCopy.ChatBackgroundOpacity!=.4f)throw new Exception("Transparency preference lost");
+Console.WriteLine("PASS: disabling opaque startup preserves custom transparency");

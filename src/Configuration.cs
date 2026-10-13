@@ -9,12 +9,12 @@ namespace XLinUI;
 [Serializable]
 public sealed class Configuration : IPluginConfiguration
 {
-    public int Version { get; set; } = 6;
-    public int Material { get; set; } // 0 existing, 1 solid, 2 image, 3 sampled glass
+    public int Version { get; set; } = 7;
+    public int Material { get; set; } = 1; // 0 existing, 1 solid, 2 image, 3 sampled glass
     public string BackgroundFile { get; set; } = "";
     public Vector3 BackgroundColor { get; set; } = new(.035f,.045f,.065f);
     public Vector3 ForegroundColor { get; set; } = new(.95f,.97f,1);
-    public float BackgroundOpacity { get; set; } = .85f;
+    public float BackgroundOpacity { get; set; } = 1;
     public float BackgroundTintOpacity { get; set; } = .35f;
     public float ImageBlur { get; set; }
     public int ImageFit { get; set; }
@@ -41,7 +41,7 @@ public sealed class Configuration : IPluginConfiguration
     public float ChatSearchWidth { get; set; }
     public float ChatSearchHeight { get; set; } = 28;
     public float ChatHeaderFontScale { get; set; } = 1;
-    public float ChatTimestampFontScale { get; set; } = .85f;
+    public float ChatTimestampFontScale { get; set; } = 1;
     public float ChatScrollbarWidth { get; set; } = 10;
     public float ChatSendButtonHeight { get; set; } = 32;
     public bool ChatShowNoviceJoin { get; set; } = true;
@@ -73,8 +73,9 @@ public sealed class Configuration : IPluginConfiguration
     [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
     public Dictionary<string,ChatLayoutProfile> ChatProfiles { get; set; } = [];
 
-    public bool ForceTransparentPanels { get; set; } = true;
-    public bool ForceTransparentNative { get; set; } = true;
+    public bool OpaqueOnEnable { get; set; } = true;
+    public bool ForceTransparentPanels { get; set; }
+    public bool ForceTransparentNative { get; set; }
     public bool TextOutline { get; set; } = true;
     public bool HighContrastText { get; set; } = true;
     public bool NativeTextOutline { get; set; } = true;
@@ -121,7 +122,7 @@ public sealed class Configuration : IPluginConfiguration
     public bool Glass { get; set; } = true;
     public bool Compact { get; set; }
     public bool NativeInteractions { get; set; }
-    public float Opacity { get; set; } = .88f;
+    public float Opacity { get; set; } = 1;
     public Vector3 Tint { get; set; } = new(.39f, .77f, .73f);
     public bool UseHotbarLayouts { get; set; }
     public float HotbarGrid { get; set; }=16;
@@ -153,12 +154,17 @@ public sealed class Configuration : IPluginConfiguration
         Enabled = ShowOriginalUi = NativeCombatWidgets = ShowTop = ShowStatus = ShowChat = true;
         ModernTarget = ModernFocus = ModernCast = ModernStatuses = ModernInventory = ModernQuests = true;
         StyleNativeWindows = SquareHotbars = SquareMinimap = HideOriginalChat = true;
-        HideBorders = Glass = Rounded = true; TextOnly = false; Opacity = .88f;
-        ForceTransparentPanels = ForceTransparentNative = TextOutline = NativeTextOutline = HighContrastText = true;
+        HideBorders = Glass = Rounded = true; ApplyOpaqueBackground();
+        TextOutline = NativeTextOutline = HighContrastText = true;
         ShowEmptyStatuses = false;
         // Preserve interaction opt-in, custom channels, toolbar choices and exclusions.
     }
 
+    public void ApplyOpaqueBackground()
+    {
+        ForceTransparentPanels=ForceTransparentNative=TextOnly=false;Glass=true;
+        Opacity=BackgroundOpacity=ChatBackgroundOpacity=1;ChatBackground=ChatBackground.Global;
+    }
     public void Normalize()
     {
         MinimapSize=Bound(MinimapSize,160,600,240);MinimapZoom=Bound(MinimapZoom,.5f,4,1);ReadabilityShade=Bound(ReadabilityShade,0,.8f,.35f);
@@ -171,7 +177,8 @@ public sealed class Configuration : IPluginConfiguration
         FontSize=Bound(FontSize,12,36,18);FontFace=Math.Clamp(FontFace,0,20);
 
         var oldVersion=Version;
-        Version = 6;
+        Version = 7;
+        if(oldVersion<7&&OpaqueOnEnable)ApplyOpaqueBackground();
         ChatNavigation=Enum.IsDefined(ChatNavigation)?ChatNavigation:ChatNavigation.Left;
         ChatPresentation=Enum.IsDefined(ChatPresentation)?ChatPresentation:ChatPresentation.Grouped;
         ChatBackground=Enum.IsDefined(ChatBackground)?ChatBackground:ChatBackground.Global;
@@ -206,7 +213,7 @@ public sealed class Configuration : IPluginConfiguration
         TopPinned??=new() { ["currency"]=true,["equipment"]=true,["fps"]=true,["sound"]=true,["clock"]=true };
         TopSections ??= DefaultTopSections();
         foreach (var key in TopLabels.Keys) if (!TopSections.ContainsKey(key)) TopSections[key] = true;
-        Opacity = float.IsFinite(Opacity) ? Math.Clamp(Opacity, 0, 1) : .88f;
+        Opacity = float.IsFinite(Opacity) ? Math.Clamp(Opacity, 0, 1) : 1;
         ChatWidth = float.IsFinite(ChatWidth) ? Math.Clamp(ChatWidth, 320, 3840) : 780;
         ChatHeight = float.IsFinite(ChatHeight) ? Math.Clamp(ChatHeight, 200, 2160) : 430;
         ChatSidebarWidth = float.IsFinite(ChatSidebarWidth) ? Math.Clamp(ChatSidebarWidth, 40, 600) : 145;
