@@ -42,7 +42,7 @@ public class SendHandler
                 return;
             }
 
-            if (tellSpecial)
+            if (tellSpecial && !activeTab.TellTarget.IsSet())
             {
                 var tellBytes = Encoding.UTF8.GetBytes(trimmed);
                 AutoTranslate.ReplaceWithPayload(ref tellBytes);

@@ -244,6 +244,7 @@ public partial class ChatLog : Window, IChatWindow
         else if (newTab.CurrentChannel.Channel is InputChannel.Invalid)
             newTab.CurrentChannel = previousTab.CurrentChannel;
 
+        if (newTab.TellTarget.IsSet()) TellSpecial = false;
         Plugin.Functions.Chat.SetChannelWithExtraChat(newTab.CurrentChannel.Channel);
 
         // Inform the webinterface about tab switch
@@ -603,7 +604,7 @@ public partial class ChatLog : Window, IChatWindow
         if (!child.Success)
             return;
 
-        if (tab.DisplayTimestamp && Plugin.Config.PrettierTimestamps)
+        if (!Plugin.Config.Appearance.MessageBubbles && tab.DisplayTimestamp && Plugin.Config.PrettierTimestamps)
             DrawLogTableStyle(tab, handler, switchedTab);
         else
             DrawLogNormalStyle(tab, handler, switchedTab);
@@ -651,14 +652,19 @@ public partial class ChatLog : Window, IChatWindow
         }
     }
 
+    private readonly Dictionary<Guid, bool> lastBubbleStyles = new();
+
     private void DrawMessages(Tab tab, PayloadHandler handler, bool isTable, bool moreCompact = false, float oldCellPaddingY = 0)
     {
+        var splitActive = false;
         try
         {
             // This may produce ApplicationException which is catched below.
             using var messages = tab.Messages.GetReadOnly(3);
 
-            var reset = false;
+            var bubbleStyle = Plugin.Config.Appearance.MessageBubbles;
+            var reset = !lastBubbleStyles.TryGetValue(tab.Identifier, out var previousBubbleStyle) || previousBubbleStyle != bubbleStyle;
+            lastBubbleStyles[tab.Identifier] = bubbleStyle;
             if (LastResize is { IsRunning: true, Elapsed.TotalSeconds: > 0.25 })
             {
                 LastResize.Stop();
@@ -761,6 +767,19 @@ public partial class ChatLog : Window, IChatWindow
                     message.IsVisible[tab.Identifier] = nowVisible;
                 }
 
+                var bubble = bubbleStyle && !isTable;
+                var bubbleStart = ImGui.GetCursorScreenPos();
+                var bubbleCursor = ImGui.GetCursorPos();
+                var bubbleWidth = ImGui.GetContentRegionAvail().X;
+                var drawList = ImGui.GetWindowDrawList();
+                if (bubble)
+                {
+                    drawList.ChannelsSplit(2);
+                    splitActive = true;
+                    drawList.ChannelsSetCurrent(1);
+                    ImGui.SetCursorPos(bubbleCursor + new Vector2(10, 8));
+                    ImGui.BeginGroup();
+                }
                 if (tab.DisplayTimestamp)
                 {
                     var localTime = message.Date.ToLocalTime();
@@ -796,7 +815,7 @@ public partial class ChatLog : Window, IChatWindow
                 if (isTable)
                     ImGui.TableNextColumn();
 
-                var lineWidth = ImGui.GetContentRegionAvail().X;
+                var lineWidth = ImGui.GetContentRegionAvail().X - (bubble ? 10 : 0);
                 if (message.Sender.Count > 0)
                 {
                     InputHandler.ChunkHandler.DrawChunks(message.Sender, true, handler, lineWidth);
@@ -809,6 +828,18 @@ public partial class ChatLog : Window, IChatWindow
                 else
                     InputHandler.ChunkHandler.DrawChunks(message.Content, true, handler, lineWidth);
 
+                if (bubble)
+                {
+                    ImGui.EndGroup();
+                    var end = ImGui.GetItemRectMax();
+                    drawList.ChannelsSetCurrent(0);
+                    var outgoing = message.Code.Type == ChatType.TellOutgoing || (message.ContentId != 0 && message.ContentId == message.Receiver);
+                    var color = outgoing ? Plugin.Config.Appearance.OutgoingBubble : Plugin.Config.Appearance.IncomingBubble;
+                    drawList.AddRectFilled(bubbleStart, new Vector2(bubbleStart.X + bubbleWidth, end.Y + 8), ImGui.ColorConvertFloat4ToU32(color), Plugin.Config.Appearance.BubbleRounding);
+                    drawList.ChannelsMerge();
+                    splitActive = false;
+                    ImGui.SetCursorPos(new Vector2(bubbleCursor.X, ImGui.GetCursorPosY() + 14));
+                }
                 message.IsVisible[tab.Identifier] = ImGui.IsItemVisible();
             }
         }
@@ -820,6 +851,10 @@ public partial class ChatLog : Window, IChatWindow
         catch (Exception ex)
         {
             Plugin.Log.Warning(ex, "Error drawing chat log");
+        }
+        finally
+        {
+            if (splitActive) ImGui.GetWindowDrawList().ChannelsMerge();
         }
     }
 
@@ -863,7 +898,7 @@ public partial class ChatLog : Window, IChatWindow
     private void DrawTabSidebar()
     {
         var currentTab = -1;
-        using var tabTable = ImRaii.Table("tabs-table", 2, ImGuiTableFlags.BordersInnerV | ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.Resizable);
+        using var tabTable = ImRaii.Table("tabs-table", 2, ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.Resizable);
         if (!tabTable.Success)
             return;
 
@@ -878,7 +913,12 @@ public partial class ChatLog : Window, IChatWindow
         {
             if (child)
             {
+                DrawPrivatePageCreator();
+                ImGui.Spacing();
+                ImGui.TextDisabled("聊天页面");
                 var previousTab = Plugin.CurrentTab;
+                using var rowStyle = ImRaii.PushStyle(ImGuiStyleVar.ItemSpacing, new Vector2(8, 7));
+                using var selectedStyle = ImRaii.PushColor(ImGuiCol.Header, new Vector4(.22f, .40f, .65f, .65f));
                 for (var tabI = 0; tabI < Plugin.Config.Tabs.Count; tabI++)
                 {
                     var tab = Plugin.Config.Tabs[tabI];
@@ -886,7 +926,8 @@ public partial class ChatLog : Window, IChatWindow
                         continue;
 
                     var unread = tabI == Plugin.LastTab || tab.UnreadMode == UnreadMode.None || tab.Unread == 0 ? "" : $" ({tab.Unread})";
-                    var clicked = ImGui.Selectable($"{tab.Name}{unread}###log-tab-{tabI}", Plugin.LastTab == tabI || Plugin.WantedTab == tabI);
+                    var label = tab.Channel == InputChannel.Tell && tab.TellTarget.IsSet() ? $"私聊 · {tab.Name}" : tab.Name;
+                    var clicked = ImGui.Selectable($"{label}{unread}###log-tab-{tabI}", Plugin.LastTab == tabI || Plugin.WantedTab == tabI, ImGuiSelectableFlags.None, new Vector2(0, ImGui.GetTextLineHeight() + 12));
                     DrawTabContextMenu(tab, tabI);
 
                     if (!clicked && Plugin.WantedTab != tabI)
@@ -910,7 +951,13 @@ public partial class ChatLog : Window, IChatWindow
         }
 
         if (currentTab > -1)
-            DrawMessageLog(Plugin.Config.Tabs[currentTab], InputHandler.PayloadHandler, childHeight, hasTabSwitched);
+        {
+            var page = Plugin.Config.Tabs[currentTab];
+            page.Unread = 0;
+            ImGui.TextUnformatted(page.TellTarget.IsSet() ? page.TellTarget.ToTargetString() : page.Name);
+            ImGui.Separator();
+            DrawMessageLog(page, InputHandler.PayloadHandler, Math.Max(1, childHeight - ImGui.GetTextLineHeightWithSpacing() - 8), hasTabSwitched);
+        }
 
         Plugin.WantedTab = null;
     }

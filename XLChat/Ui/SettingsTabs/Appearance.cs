@@ -14,6 +14,15 @@ public sealed class Appearance(Plugin owner,Configuration mutable) : ISettingsTa
             import=null;
         }
         var options=mutable.Appearance??=new();
+        var messageStyle=options.MessageBubbles?1:0;
+        if(ImGui.Combo("消息样式",ref messageStyle,new[]{"纯文字","聊天气泡"},2))options.MessageBubbles=messageStyle==1;
+        if(options.MessageBubbles)
+        {
+            ImGui.ColorEdit4("接收消息气泡",ref options.IncomingBubble);
+            ImGui.ColorEdit4("发出消息气泡",ref options.OutgoingBubble);
+            ImGui.SliderFloat("气泡圆角",ref options.BubbleRounding,0,24,"%.0f");
+        }
+        ImGui.Separator();
         var mode=(int)options.Mode;
         if(ImGui.Combo("背景样式",ref mode,new[]{"纯色","毛玻璃（静态缓存）","上传图片"},3))options.Mode=(BackgroundMode)mode;
         ImGui.ColorEdit3("背景色盘",ref options.Color);

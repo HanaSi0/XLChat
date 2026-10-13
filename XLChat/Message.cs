@@ -97,7 +97,14 @@ public partial class Message
         if (!allChannelsFromSender && Code.Type != ChatType.TellIncoming && Code.Type != ChatType.TellOutgoing)
             return false;
 
-        return tellTarget.ContentId == ContentId;
+        if (tellTarget.ContentId != 0 && ContentId != 0)
+            return tellTarget.ContentId == ContentId;
+
+        var peer = TellTarget.Empty();
+        foreach (var payload in new Lumina.Text.ReadOnly.ReadOnlySeString(SenderSource.Encode()))
+            if (peer.FromCharacterLink(payload))
+                return peer.World == tellTarget.World && string.Equals(peer.Name, tellTarget.Name, StringComparison.OrdinalIgnoreCase);
+        return false;
     }
 
     private int GenerateHash()

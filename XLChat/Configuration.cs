@@ -67,7 +67,8 @@ public class Configuration : IPluginConfiguration
     public bool MoreCompactPretty;
     public bool HideSameTimestamps;
     public bool ShowNoviceNetwork;
-    public bool SidebarTabView;
+    public bool SidebarTabView = true;
+    public bool ModernSidebarInitialized;
     public bool PrintChangelog = false;
     public bool OnlyPreviewIf;
     public int PreviewMinimum = 1;
@@ -165,6 +166,7 @@ public class Configuration : IPluginConfiguration
         HideSameTimestamps = other.HideSameTimestamps;
         ShowNoviceNetwork = other.ShowNoviceNetwork;
         SidebarTabView = other.SidebarTabView;
+        ModernSidebarInitialized = other.ModernSidebarInitialized;
         PrintChangelog = other.PrintChangelog;
         OnlyPreviewIf = other.OnlyPreviewIf;
         PreviewMinimum = other.PreviewMinimum;
@@ -292,19 +294,6 @@ public class Tab
         {
             if (!message.Code.IsPlayerMessage())
                 return false;
-
-            if (TellTarget.ContentId == 0)
-            {
-                var target = TellTarget.Empty();
-                foreach (var payload in new ReadOnlySeString(message.SenderSource.Encode()))
-                {
-                    if (target.FromCharacterLink(payload))
-                        break; // Character link found
-                }
-
-                if (target.CompareNames(TellTarget))
-                    TellTarget.ContentId = message.ContentId;
-            }
 
             return message.MatchTellTarget(TellTarget, AllSenderMessages);
         }

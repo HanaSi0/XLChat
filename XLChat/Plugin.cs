@@ -93,6 +93,7 @@ public sealed class Plugin : IDalamudPlugin
 
             Config = Interface.GetPluginConfig() as Configuration ?? new Configuration();
             Config.Appearance??=new();Config.Appearance.Normalize();
+            if (!Config.ModernSidebarInitialized) { Config.SidebarTabView = true; Config.ModernSidebarInitialized = true; }
 
             if (Config.Tabs.Count == 0)
                 Config.Tabs.Add(TabsUtil.VanillaGeneral);

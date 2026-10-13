@@ -56,3 +56,14 @@ var badBitmap=Convert.FromBase64String(samples[2]);BitConverter.GetBytes(500000)
 bool rejected=false;try{XLChat.Appearance.BackgroundProcessor.Decode(badBitmap);}catch(IOException){rejected=true;}
 if(!rejected)throw new Exception("Oversized image decoded before header validation");
 Console.WriteLine("PASS: PNG/JPEG/BMP decode, cache reuse, alpha ownership, cancellation and oversized image rejection");
+var unknownTell=new Message(Guid.NewGuid(),0,0,DateTimeOffset.UtcNow,new ChatCode(XivChatType.TellIncoming,XivChatRelationKind.OtherPlayer,XivChatRelationKind.OtherPlayer),[],[],new SeString(),new SeString(),Guid.Empty);
+var peer=new XLChat.GameFunctions.Types.TellTarget("好友",1,0,XLChat.GameFunctions.Types.TellReason.Direct);
+if(unknownTell.MatchTellTarget(peer,false))throw new Exception("Unknown zero IDs merged unrelated private messages");
+var knownTell=new Message(Guid.NewGuid(),0,123,DateTimeOffset.UtcNow,new ChatCode(XivChatType.TellIncoming,XivChatRelationKind.OtherPlayer,XivChatRelationKind.OtherPlayer),[],[],new SeString(),new SeString(),Guid.Empty);
+peer.ContentId=123;
+if(!knownTell.MatchTellTarget(peer,false))throw new Exception("Known friend message missing");
+peer.ContentId=456;
+if(knownTell.MatchTellTarget(peer,false))throw new Exception("Different friends merged");
+var style=new XLChat.Appearance.AppearanceOptions{IncomingBubble=new(float.NaN,2,-1,.4f),BubbleRounding=float.NaN};style.Normalize();
+if(style.IncomingBubble.X!=0||style.IncomingBubble.Y!=1||style.IncomingBubble.Z!=0||style.BubbleRounding!=10)throw new Exception("Invalid bubble settings not normalized");
+Console.WriteLine("PASS: private recipient isolation and bubble settings");
