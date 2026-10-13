@@ -8,7 +8,7 @@
 
 ## 安装
 
-适用于 **国服 soil XIVLauncher / Dalamud API 15**，当前版本 **0.3.3**。
+适用于 **国服 soil XIVLauncher / Dalamud API 15**，当前版本 **0.3.4**。
 
 1. 打开 Dalamud 设置 → 实验性 → 自定义插件仓库。
 2. 添加下面的地址，保存并刷新插件列表。
@@ -18,7 +18,7 @@
 https://raw.githubusercontent.com/HanaSi0/XLinUI/main/pluginmaster.json
 ```
 
-[手动下载](https://github.com/HanaSi0/XLinUI/releases/download/v0.3.3/XLinUI.zip) · [版本页面](https://github.com/HanaSi0/XLinUI/releases/tag/v0.3.3)
+[手动下载](https://github.com/HanaSi0/XLinUI/releases/download/v0.3.4/XLinUI.zip) · [版本页面](https://github.com/HanaSi0/XLinUI/releases/tag/v0.3.4)
 
 以前用本地开发路径加载过旧版的亲友，先停用旧插件、移除旧 DLL 路径，再安装这个版本。旧高版本不会自动降级。已经通过仓库安装的亲友，刷新列表后更新即可。
 
@@ -43,11 +43,11 @@ https://raw.githubusercontent.com/HanaSi0/XLinUI/main/pluginmaster.json
 
 ## 本次更新
 
-- 移除实时毛玻璃和游戏画面采样；只对本机导入背景图片生成模糊并缓存。旧实时玻璃设置自动改为纯色背景。
-- 聊天设置分为“常用、频道、Chat Two 导入、更多”，提供简洁日志和社交分组预设，精细尺寸折叠显示。
-- 在“Chat Two 导入”读取本机设置、预览并确认新增分类，保留接收频道、发送者／目标关系过滤和默认发送频道，不改动 Chat Two。临时分类不导入，ExtraChat 消息源和独立弹窗仍由原插件处理。
-- 简化背景选项；结束拖动或输入后保存设置。默认开启时背景不透明，可关闭该默认行为。
+- 频道接收筛选按附近、小队、私信、部队、通讯贝、系统和战斗等分组，可批量勾选、按名称或编号搜索。
+- 快捷方案包括全部消息、玩家交流、小队与团队、私信、部队与通讯贝、系统与活动；应用会替换接收筛选及默认发送频道。
+- 可单独屏蔽战斗刷屏，新增空分类不会接收全部消息。修改导入分类时保留未删除频道的 Chat Two 关系过滤。
+- 聊天侧栏使用选中色条和独立未读徽标，长名称自动省略；顶部标签支持滚动。可开关筛选摘要与未读徽标。
 
-参考 [Chat Two 公开源码](https://github.com/Infiziert90/ChatTwo) 的设置组织与配置结构；未接管它的聊天发送接口、消息历史或私有数据。
+继续保留本机图片模糊背景和 Chat Two 配置导入；默认开启时背景不透明。参考 [Chat Two 公开源码](https://github.com/Infiziert90/ChatTwo) 的配置结构，导入不修改原插件。
 
-原生直接发送和共享纹理改写继续暂停。持续卡顿是否改善仍需在游戏内验证。
+原生直接发送和共享纹理改写继续暂停。聊天 Enter 复制指令后粘贴到原版发送。

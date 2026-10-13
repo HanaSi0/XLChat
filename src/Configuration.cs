@@ -57,6 +57,8 @@ public sealed class Configuration : IPluginConfiguration
     public bool ChatIncludeHandled { get; set; }
     public bool ChatShowTimestamp { get; set; } = true;
     public bool ChatTimestampSeconds { get; set; }
+    public bool ChatShowFilterSummary { get; set; } = true;
+    public bool ChatShowUnreadBadges { get; set; } = true;
     public bool ChatShowChannelName { get; set; } = true;
     public bool ChatGroupMessages { get; set; } = true;
     public bool ChatFollow { get; set; } = true;
@@ -234,6 +236,7 @@ public sealed class Configuration : IPluginConfiguration
             c.Id = string.IsNullOrWhiteSpace(c.Id) ? Guid.NewGuid().ToString("N") : c.Id;
             c.Name = string.IsNullOrWhiteSpace(c.Name) ? "未命名" : c.Name;
             c.Types ??= [];
+            c.ExcludedTypes=new List<ushort>(new HashSet<ushort>(c.ExcludedTypes??[]));
             c.Relations ??= [];
             foreach(var key in new List<ushort>(c.Relations.Keys))if(c.Relations[key] is null||!c.Types.Contains(key))c.Relations.Remove(key);
             if(!ids.Add(c.Id)){c.Id=Guid.NewGuid().ToString("N");ids.Add(c.Id);}
@@ -276,6 +279,7 @@ public sealed class Channel(string name, List<ushort> types)
     public string Name { get; set; } = name;
     // Empty means all received messages. These values are LogKind IDs, not send commands.
     public List<ushort> Types { get; set; } = types;
+    public List<ushort> ExcludedTypes { get; set; } = [];
     public bool MatchNone { get; set; }
     public Dictionary<ushort,ChatRelationFilter> Relations { get; set; } = [];
     public string SendRoute { get; set; } = "say";

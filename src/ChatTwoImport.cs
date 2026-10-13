@@ -15,7 +15,7 @@ internal static class ChatFilter
 {
     internal static bool Accepts(Channel channel,ushort type,int source,int target)
     {
-        if(channel.MatchNone||(channel.Types.Count>0&&!channel.Types.Contains(type)))return false;
+        if(channel.ExcludedTypes.Contains(type)||channel.MatchNone||(channel.Types.Count>0&&!channel.Types.Contains(type)))return false;
         if(!channel.Relations.TryGetValue(type,out var rule))return true;
         // Chat Two accepts system messages (source 0), or either matching relation.
         return source==0 || (source is >=0 and <32 && (rule.Source&(1u<<source))!=0) || (target is >=0 and <32 && (rule.Target&(1u<<target))!=0);

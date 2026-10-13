@@ -115,38 +115,27 @@ internal sealed partial class UserInterface
         {
             if(!visible)return;
             ImGui.SetWindowFontScale(C.ChatFontScale*C.ChatSidebarFontScale);
-            foreach(var channel in C.Channels)
-            {
-                var unread=plugin.Unread.GetValueOrDefault(channel.Id);
-                if(ReadableText.Selectable(channel.Name+(unread>0?$" · {unread}":"")+"###"+channel.Id,plugin.ActiveChannel==channel.Id,ImGuiSelectableFlags.None,new Vector2(0,C.ChatSidebarItemHeight*ImGuiHelpers.GlobalScale)))SelectChatChannel(channel);
-                if(ImGui.IsItemHovered())ImGui.SetTooltip(channel.Name+"\n右键查看分类菜单");
-                if(ImGui.BeginPopupContextItem("category-menu"))
-                {
-                    try
-                    {
-                        if(ReadableText.Selectable("标为已读"))plugin.Unread[channel.Id]=0;
-                        if(ReadableText.Selectable("编辑分类／布局"))SettingsOpen=true;
-                    }
-                    finally{ImGui.EndPopup();}
-                }
-            }
+            foreach(var channel in C.Channels)DrawChatCategory(channel);
             ImGui.Separator();if(ReadableText.SmallButton("聊天设置"))SettingsOpen=true;
         }
         finally{ImGui.EndChild();}
     }
     private void DrawChatTabs()
     {
-        if(!ImGui.BeginTabBar("ChatCategories"))return;
+        ImGui.PushStyleColor(ImGuiCol.TabActive,new Vector4(C.Tint,.22f));
+        ImGui.PushStyleColor(ImGuiCol.TabHovered,new Vector4(C.Tint,.14f));
+        ImGui.PushStyleColor(ImGuiCol.Tab,new Vector4(C.BackgroundColor,.3f));
+        if(!ImGui.BeginTabBar("ChatCategories",ImGuiTabBarFlags.FittingPolicyScroll)){ImGui.PopStyleColor(3);return;}
         try
         {
             foreach(var channel in C.Channels)
             {
-                var unread=plugin.Unread.GetValueOrDefault(channel.Id);
-                if(ImGui.BeginTabItem(channel.Name+(unread>0?$" ({unread})":"")+"###"+channel.Id))
+                var unread=C.ChatShowUnreadBadges?plugin.Unread.GetValueOrDefault(channel.Id):0;
+                if(ImGui.BeginTabItem(channel.Name+(unread>0?$" · {ChatChannelPolicy.Badge(unread)}":"")+"###"+channel.Id,plugin.ActiveChannel==channel.Id?ImGuiTabItemFlags.SetSelected:ImGuiTabItemFlags.None))
                 {try{if(plugin.ActiveChannel!=channel.Id)SelectChatChannel(channel);}finally{ImGui.EndTabItem();}}
             }
         }
-        finally{ImGui.EndTabBar();}
+        finally{ImGui.EndTabBar();ImGui.PopStyleColor(3);}
     }
     private void ChatVerticalSplit(ChatRegions regions,float height,bool right)
     {
@@ -162,6 +151,7 @@ internal sealed partial class UserInterface
         ImGui.SetWindowFontScale(C.ChatFontScale);
         var scale=ImGuiHelpers.GlobalScale;
         var channel=C.Channels.First(c=>c.Id==plugin.ActiveChannel);
+        DrawChatFilterSummary(channel);
         if(C.ChatShowSearch)
         {
             ImGui.SetNextItemWidth(C.ChatSearchWidth>0?Math.Min(C.ChatSearchWidth*scale,ImGui.GetContentRegionAvail().X):-1);
@@ -196,7 +186,12 @@ internal sealed partial class UserInterface
             filteredChat.Clear();filteredChat.AddRange(plugin.History.Where(m=>ChatFilter.Accepts(channel,m.Type,m.SourceKind,m.TargetKind)&&ChatPolicy.Matches(m.Type,m.Sender,m.Text,channel.Types,search)));
             chatCacheRevision=plugin.HistoryRevision;chatCacheChannel=channel.Id;chatCacheSearch=search;
         }
-        if(filteredChat.Count==0)ReadableText.TextDisabled(search.Length==0?"等待新消息…":"没有匹配的消息");
+        if(filteredChat.Count==0)
+        {
+            ImGui.Dummy(new Vector2(0,12*ImGuiHelpers.GlobalScale));
+            ReadableText.TextWrapped(channel.MatchNone?"此分类尚未选择接收频道。":search.Length>0?"没有匹配的消息，试试其他关键词。":"等待此分类的新消息…");
+            if(channel.MatchNone&&ReadableText.SmallButton("设置接收频道"))SettingsOpen=true;
+        }
         var jumpLatest=false;var openedEarlier=false;
         if(filteredChat.Count>C.ChatPageSize)
         {
@@ -246,7 +241,7 @@ internal sealed partial class UserInterface
                             ImGui.SetWindowFontScale(C.ChatFontScale*C.ChatTimestampFontScale);
                             var stamp=formatted.Stamp;
                             if(senderWidth+ImGui.CalcTextSize(stamp).X+ImGui.GetStyle().ItemSpacing.X<=width)ImGui.SameLine();
-                            ReadableText.TextWrapped(stamp,width);
+                            ReadableText.TextColoredWrapped(new Vector4(C.ForegroundColor*.75f,1),stamp,width);
                         }
                     }
                     ImGui.SetWindowFontScale(C.ChatFontScale);

@@ -27,6 +27,8 @@ internal sealed partial class UserInterface
                     ChatSlider("宽度",C.ChatWidth,320,3840,v=>{C.ChatWidth=v;applyChatSize=true;},ref changed);
                     ChatSlider("高度",C.ChatHeight,200,2160,v=>{C.ChatHeight=v;applyChatSize=true;},ref changed);
                     ChatSlider("字号",C.ChatFontScale,.6f,2.5f,v=>C.ChatFontScale=v,ref changed,"%.2f");
+                    changed|=Toggle("显示筛选摘要",C.ChatShowFilterSummary,v=>C.ChatShowFilterSummary=v);
+                    changed|=Toggle("显示未读徽标",C.ChatShowUnreadBadges,v=>C.ChatShowUnreadBadges=v);
                     changed|=Toggle("显示时间",C.ChatShowTimestamp,v=>C.ChatShowTimestamp=v);
                     changed|=Toggle("显示搜索",C.ChatShowSearch,v=>C.ChatShowSearch=v);
                     changed|=Toggle("显示加入新手频道",C.ChatShowNoviceJoin,v=>C.ChatShowNoviceJoin=v);
@@ -87,25 +89,18 @@ internal sealed partial class UserInterface
                         if(i<C.Channels.Count-1&&ReadableText.SmallButton("下移")){move=i;moveBy=1;}ImGui.SameLine();
                         if(C.Channels.Count>1&&ReadableText.SmallButton("删除"))remove=channel;
                         var route=Math.Max(0,ChatPolicy.Routes.FindIndex(r=>r.Key==channel.SendRoute));
-                        if(ImGui.Combo("默认发送频道",ref route,ChatPolicy.Routes.Select(r=>r.Label).ToArray(),ChatPolicy.Routes.Count)){channel.SendRoute=ChatPolicy.Routes[route].Key;changed=true;}
+                        if(ImGui.Combo("默认发送频道",ref route,sendRouteLabels,ChatPolicy.Routes.Count)){channel.SendRoute=ChatPolicy.Routes[route].Key;changed=true;}
                         var custom=channel.CustomColor;if(ReadableText.Checkbox("分类独立颜色",ref custom)){channel.CustomColor=custom;changed=true;}
                         if(custom){var color=channel.Color;if(ImGui.ColorEdit3("发言人颜色",ref color)){channel.Color=color;changed=true;}}
-                        var all=channel.Types.Count==0&&!channel.MatchNone;if(ReadableText.Checkbox("接收全部消息",ref all)){channel.Types.Clear();channel.Relations.Clear();channel.MatchNone=!all;chatCacheRevision=-1;changed=true;}
-                        if(channel.Relations.Count>0)ReadableText.TextDisabled("保留了 Chat Two 的发送者／目标关系过滤。删除并重新勾选频道可清除该频道关系限制。");
-                        if(ImGui.TreeNode("关联游戏频道"))
-                        {
-                            foreach(var type in Enum.GetValues<XivChatType>().Distinct())
-                            {var id=(ushort)type;var selected=channel.Types.Contains(id);if(ReadableText.Checkbox($"{ChannelName(id)} ({id})",ref selected)){if(selected)channel.Types.Add(id);else channel.Types.Remove(id);channel.Relations.Remove(id);channel.MatchNone=channel.Types.Count==0;chatCacheRevision=-1;changed=true;}}
-                            ImGui.TreePop();
-                        }
+                        DrawSmartChannelFilter(channel,ref changed);
                         ImGui.TreePop();
                     }
                 }
                 finally{ImGui.PopID();}
             }
             if(move>=0){(C.Channels[move],C.Channels[move+moveBy])=(C.Channels[move+moveBy],C.Channels[move]);changed=true;}
-            if(remove is not null){C.Channels.Remove(remove);plugin.Unread.Remove(remove.Id);channelDrafts.Remove(remove.Id);changed=true;}
-            if(ReadableText.Button("添加分类")){C.Channels.Add(new Channel("新分类",[]));changed=true;}
+            if(remove is not null){C.Channels.Remove(remove);plugin.Unread.Remove(remove.Id);channelDrafts.Remove(remove.Id);channelNameEdits.Remove(remove.Id);channelFilterPresets.Remove(remove.Id);channelFilterSearch.Remove(remove.Id);changed=true;}
+            if(C.Channels.Count<64&&ReadableText.Button("添加分类")){C.Channels.Add(new Channel("新分类",[]){MatchNone=true});changed=true;}
         }
     }
     private void DrawChatAdvanced(ref bool changed)
