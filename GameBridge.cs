@@ -15,6 +15,20 @@ namespace XLinUI;
 // Uses generated bindings shipped by the active Dalamud installation, never hardcoded addresses.
 internal static unsafe class GameBridge
 {
+    internal static bool? InNoviceNetwork()
+    {
+        if(InfoModule.Instance()==null)return null;
+        var proxy=InfoProxyNoviceNetwork.Instance();
+        // Public Flags field: bit 0 is IsInNoviceNetwork in the shipped structure.
+        return proxy==null?null:(proxy->Flags&1)!=0;
+    }
+    internal static bool JoinNoviceNetwork()
+    {
+        if(InfoModule.Instance()==null)return false;
+        var proxy=InfoProxyNoviceNetwork.Instance();
+        if(proxy==null||(proxy->Flags&1)!=0)return false;
+        proxy->SendJoinRequest();return true;
+    }
     internal static bool MainCommandEnabled(uint id)
     {
         var hud = AgentHUD.Instance();

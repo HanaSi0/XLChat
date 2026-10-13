@@ -53,7 +53,7 @@ internal sealed partial class UserInterface(Plugin plugin)
     internal void ClearInput()
     {
         draft = search = tellRecipient = ""; importedLayouts.Clear();
-        channelDrafts.Clear();filteredChat.Clear();chatCacheRevision=-1;ChatAtBottom=false;chatLabels=null;chatSubmitted=default;notice="";expandedChatRows=0;
+        channelDrafts.Clear();filteredChat.Clear();chatCacheRevision=-1;ChatAtBottom=false;chatLabels=null;chatSubmitted=default;noviceJoinSubmitted=default;notice="";expandedChatRows=0;
         bagSlots.Clear(); bagCapacity = 0; bagAvailable = false; lastInventoryRead = default;
         acceptedQuests.Clear(); lastQuestRead = default;
         gearsets.Clear(); currencies.Clear(); currencyRead = default;

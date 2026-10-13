@@ -45,6 +45,7 @@ internal sealed partial class UserInterface
             changed|=Toggle("时间戳显示秒",C.ChatTimestampSeconds,v=>C.ChatTimestampSeconds=v);
             changed|=Toggle("显示时间戳",C.ChatShowTimestamp,v=>C.ChatShowTimestamp=v);
             changed|=Toggle("显示游戏频道名称",C.ChatShowChannelName,v=>C.ChatShowChannelName=v);
+            changed|=Toggle("显示加入新手频道按钮",C.ChatShowNoviceJoin,v=>C.ChatShowNoviceJoin=v);
             changed|=Toggle("显示发送按钮（关闭后仅 Enter 发送）",C.ChatShowSendButton,v=>C.ChatShowSendButton=v);
             changed|=Toggle("也显示被其他插件处理／隐藏的消息",C.ChatIncludeHandled,v=>C.ChatIncludeHandled=v);
             changed|=Toggle("显示搜索框",C.ChatShowSearch,v=>C.ChatShowSearch=v);

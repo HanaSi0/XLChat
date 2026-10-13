@@ -36,6 +36,7 @@ public sealed class Configuration : IPluginConfiguration
     public float ChatTimestampFontScale { get; set; } = .85f;
     public float ChatScrollbarWidth { get; set; } = 10;
     public float ChatSendButtonHeight { get; set; } = 32;
+    public bool ChatShowNoviceJoin { get; set; } = true;
     public bool ChatShowSendButton { get; set; } = true;
     public float ChatInputHeight { get; set; } = 32;
     public float ChatInputWidth { get; set; }

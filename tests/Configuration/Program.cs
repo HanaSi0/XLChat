@@ -92,3 +92,9 @@ if(topCopy.TopSections["currency"]||!topCopy.TopPinned["currency"]||!topCopy.Top
 Console.WriteLine("PASS: visibility and right pinning remain independent with bounded toolbar dimensions");
 if(!JsonConvert.DeserializeObject<Configuration>("{}")!.TopPinned["clock"])throw new Exception("Default pinned information missing");
 Console.WriteLine("PASS: legacy configuration receives default right pinned information");
+
+var noviceSetting=new Configuration{ChatShowNoviceJoin=false};var noviceCopy=JsonConvert.DeserializeObject<Configuration>(JsonConvert.SerializeObject(noviceSetting))!;noviceCopy.Normalize();
+if(noviceCopy.ChatShowNoviceJoin)throw new Exception("Novice button visibility did not persist");
+var noviceProfile=ChatLayoutProfile.Capture(noviceSetting);noviceCopy.ChatShowNoviceJoin=true;noviceProfile.Apply(noviceCopy);
+if(noviceCopy.ChatShowNoviceJoin)throw new Exception("Novice button profile did not restore");
+Console.WriteLine("PASS: novice join button visibility persists and follows chat layout profiles");

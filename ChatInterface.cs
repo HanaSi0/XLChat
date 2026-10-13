@@ -23,6 +23,7 @@ internal sealed partial class UserInterface
     private bool applyChatPosition;
     private bool composerUsable;
     private DateTime chatSubmitted;
+    private DateTime noviceJoinSubmitted;
     private int expandedChatRows;
     private Dictionary<ushort,string>? chatLabels;
 
@@ -279,6 +280,7 @@ internal sealed partial class UserInterface
         ImGui.SetNextItemWidth(Math.Min(C.ChatSelectorWidth*scale,ImGui.GetContentRegionAvail().X));
         if(ImGui.Combo("##send-route",ref index,ChatPolicy.Routes.Select(r=>r.Label).ToArray(),ChatPolicy.Routes.Count)){chatRoute=ChatPolicy.Routes[index].Key;plugin.Save();}
         if(ImGui.GetContentRegionAvail().X>100*scale){ImGui.SameLine();var followNow=C.ChatFollow;if(ReadableText.Checkbox("跟随",ref followNow)){C.ChatFollow=followNow;plugin.Save();}}
+        if(C.ChatShowNoviceJoin)DrawNoviceJoin();
         if(chatRoute=="tell"){ImGui.SetNextItemWidth(-1);ImGui.InputTextWithHint("##tell-recipient","玩家名@世界名",ref tellRecipient,100);}
         var total=ImGui.GetContentRegionAvail().X;var button=C.ChatShowSendButton?Math.Min(C.ChatSendButtonWidth*scale,Math.Max(30*scale,total*.3f)):0;
         var input=Math.Max(20,total-button-(C.ChatShowSendButton?ImGui.GetStyle().ItemSpacing.X:0));
@@ -298,6 +300,40 @@ internal sealed partial class UserInterface
         ReadableText.TextDisabled($"{Encoding.UTF8.GetByteCount(draft)} 字节 · {ChatPolicy.Routes[index].Label}"+(chatRoute=="tell"?" → "+tellRecipient:""));
         if(plugin.LatestChatErrorTime>=chatSubmitted&&chatSubmitted!=default&&(DateTime.Now-chatSubmitted).TotalSeconds<8&&plugin.LatestChatError.Length>0)ReadableText.TextWrapped("游戏提示："+plugin.LatestChatError);
         else if(notice.Length>0)ReadableText.TextWrapped(notice);
+    }
+    private void DrawNoviceJoin()
+    {
+        bool? joined;
+        try{joined=GameBridge.InNoviceNetwork();}catch{joined=null;}
+        var waiting=(DateTime.UtcNow-noviceJoinSubmitted).TotalSeconds<5;
+        var label=joined==true?"已加入新手频道":waiting?"加入中…":"加入新手频道";
+        ImGui.SetWindowFontScale(C.ChatFontScale*.85f);
+        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding,new Vector2(4,2));
+        try
+        {
+            var width=ImGui.CalcTextSize(label).X+8;
+            if(ImGui.GetItemRectMax().X+ImGui.GetStyle().ItemSpacing.X+width<=ImGui.GetWindowPos().X+ImGui.GetWindowSize().X-ImGui.GetStyle().WindowPadding.X)ImGui.SameLine();
+            var disabled=joined is null||joined==true||waiting||!C.NativeInteractions;
+            ImGui.BeginDisabled(disabled);
+            try
+            {
+                if(ReadableText.SmallButton(label))
+                {
+                    var submitted=false;
+                    Native(()=>submitted=GameBridge.JoinNoviceNetwork());
+                    if(submitted)
+                    {
+                        noviceJoinSubmitted=DateTime.UtcNow;chatSubmitted=DateTime.Now;plugin.LatestChatError="";
+                        notice="已提交加入新手频道请求；资格、频道人数及加入结果以游戏提示为准。";
+                    }
+                    else if(C.NativeInteractions)notice="游戏频道入口暂未就绪，或已加入新手频道。";
+                }
+            }
+            finally{ImGui.EndDisabled();}
+            if(ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
+                ImGui.SetTooltip(joined==true?"已加入新手频道；发送频道可选择“新人频道”。":!C.NativeInteractions?"请先在模块设置中启用游戏交互。":joined is null?"游戏新手频道接口暂未就绪。":waiting?"加入请求已提交，请等待游戏提示。":"请求加入原版新手频道；资格与频道容量由游戏判断。可在聊天设置中隐藏此按钮。");
+        }
+        finally{ImGui.PopStyleVar();ImGui.SetWindowFontScale(C.ChatFontScale);}
     }
     private void SendChat()
     {
