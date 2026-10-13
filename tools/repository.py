@@ -10,7 +10,7 @@ parser=argparse.ArgumentParser()
 parser.add_argument('--check',action='store_true')
 args=parser.parse_args()
 if args.check:
-    with zipfile.ZipFile(root/'XLinUI.zip') as archive:
+    with zipfile.ZipFile(root/'dist/XLinUI.zip') as archive:
         manifest=json.loads(archive.read('XLinUI.json'))
 else:
     manifest=json.loads((root/'bin/Release/XLinUI/XLinUI.json').read_text())

@@ -3,8 +3,8 @@
     <Version>0.1.0</Version>
     <Author>HanaSi0</Author>
     <Name>XLinUI</Name>
-    <Punchline>可自定义聊天、图标顶部栏与多热键栏布局。</Punchline>
-    <Description>个人现代 UI：可编辑聊天、图标顶部栏、多热键栏与 Shift 网格吸附、本机背景和字体导入、模糊玻璃、简洁战斗面板；各模块独立开关并可保留原版界面。</Description>
+    <Punchline>给亲友的简洁界面，聊天、顶部栏和热键栏自由调整。</Punchline>
+    <Description>给亲友用的 FF14 界面小改造：简洁聊天、图标顶部栏、多热键栏编辑、玻璃背景和自定义字体。大小、颜色和显示内容都可以自己调整，保留原版技能拖放与常用操作。输入 /xlinui 开始设置。</Description>
     <RepoUrl>https://github.com/HanaSi0/XLinUI</RepoUrl>
     <Tags>ui;chat;hotbar;personal</Tags>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
