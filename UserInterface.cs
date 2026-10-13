@@ -56,12 +56,14 @@ internal sealed partial class UserInterface(Plugin plugin)
         using var theme = new Theme(C);
         if (C.Enabled && loggedIn)
         {
+            DrawNativeOutlines();
             if (C.ShowTop || !C.ShowOriginalUi) DrawTop();
             if (C.ShowStatus) DrawStatus();
             if (C.ShowParty && !C.NativeCombatWidgets) DrawParty();
             if (C.ShowChat) DrawChat();
-            if (C.ShowSkills && !C.NativeCombatWidgets) DrawSkills();
+            // Native hotbars retain all game interactions; the obsolete single-bar mirror is no longer drawn.
             DrawUtilityPanels();
+            if (gameWindowsOpen) DrawGameWindows();
             if (commandsOpen) DrawCommands();
             if (teleportOpen) DrawTeleports();
         }
@@ -126,6 +128,7 @@ internal sealed partial class UserInterface(Plugin plugin)
             new TopItem(volumeText, () => volumeOpen = !volumeOpen, Key: "sound"),
             new TopItem($"LT {DateTime.Now:HH:mm} / ET {et.Hours:00}:{et.Minutes:00}", Key: "clock"),
             new TopItem(C.LockWindows ? "解锁布局" : "锁定布局", () => { C.LockWindows = !C.LockWindows; plugin.Save(); }),
+            new TopItem("游戏功能", () => gameWindowsOpen = !gameWindowsOpen, Key: "gamewindows"),
             new TopItem("设置", () => SettingsOpen = true),
             new TopItem(C.ShowOriginalUi ? "隐藏原版 UI" : "恢复原版 UI", () => { C.ShowOriginalUi = !C.ShowOriginalUi; plugin.Save(); }),
         ]);
@@ -392,59 +395,17 @@ internal sealed partial class UserInterface(Plugin plugin)
         else notice = "未提交：消息须为单行且不超过 450 个 UTF-8 字节，或游戏 UI 尚未就绪。";
     }
 
-    private void DrawSkills()
+    private void DrawNativeOutlines()
     {
-        ImGui.PushStyleVar(ImGuiStyleVar.WindowRounding, 0);
-        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 0);
-        ImportLayout("skills", "_ActionBar", "ActionBar");
-        var visible = ImGui.Begin("XLinUI · 技能###XLinUISkills", WindowFlags | ImGuiWindowFlags.AlwaysAutoResize);
-        try
+        if (C.TextOnly) return;
+        var draw = ImGui.GetBackgroundDrawList();
+        var color = ImGui.ColorConvertFloat4ToU32(new Vector4(C.Tint, .7f));
+        foreach (var item in plugin.NativeStyle.Outlines)
         {
-            if (!visible) return;
-            if (!C.NativeInteractions)
-            {
-                ImGui.TextUnformatted("方角技能栏：在设置中启用游戏交互后显示热键栏镜像。");
-                return;
-            }
-            var size = C.SkillSize * ImGuiHelpers.GlobalScale;
-            for (var i = 0; i < 12; i++)
-            {
-                if (i > 0 && i % 6 != 0) ImGui.SameLine();
-                ImGui.PushID(i);
-                try
-                {
-                    var slot = GameBridge.ReadSlot(C.Hotbar, i);
-                    var pos = ImGui.GetCursorScreenPos();
-                    var texture = slot.Icon == 0 ? null : Plugin.Textures.GetFromGameIcon(new GameIconLookup(slot.Icon)).GetWrapOrDefault();
-                    var clicked = ImGui.Button("##slot", new Vector2(size));
-                    if (texture != null)
-                    {
-                        var inset = new Vector2(3 * ImGuiHelpers.GlobalScale);
-                        ImGui.GetWindowDrawList().AddImage(texture.Handle, pos + inset, pos + new Vector2(size) - inset);
-                    }
-                    if (slot.Cooldown > 0)
-                    {
-                        ImGui.GetWindowDrawList().AddRectFilled(pos, pos + new Vector2(size), 0x88000000);
-                        ImGui.GetWindowDrawList().AddText(pos + new Vector2(5, 5), 0xFFFFFFFF, slot.Cooldown.ToString());
-                    }
-                    if (ImGui.IsItemHovered())
-                        ImGui.SetTooltip($"热键栏 {C.Hotbar + 1} · 槽位 {i + 1}\n{slot.Type ?? "空"} / {slot.Command}\n键盘快捷键继续使用游戏原版绑定。");
-                    if (clicked && slot.Command != 0)
-                    {
-                        var index = i;
-                        Native(() => GameBridge.ExecuteSlot(C.Hotbar, index));
-                    }
-                }
-                finally { ImGui.PopID(); }
-            }
+            if (item.Name != "_NaviMap" && C.HideBorders && !HudGeometry.IsStandardHotbar(item.Name)) continue;
+            var pos = ImGuiHelpers.MainViewport.Pos + item.Position;
+            draw.AddRect(pos, pos + item.Size, color, item.Radius, ImDrawFlags.None, 1);
         }
-        catch (Exception ex)
-        {
-            C.NativeInteractions = false; plugin.Save();
-            Plugin.Log.Error(ex, "热键栏接口不可用，已关闭游戏交互");
-            ImGui.TextWrapped("热键栏接口不可用；已关闭游戏交互，请查看 /xllog。");
-        }
-        finally { EndPanel(); ImGui.PopStyleVar(2); }
     }
 
     private void DrawSettings()
@@ -486,7 +447,22 @@ internal sealed partial class UserInterface(Plugin plugin)
             changed |= Toggle("分类聊天", C.ShowChat, v => C.ShowChat = v);
             changed |= Toggle("显示插件聊天时隐藏原版聊天", C.HideOriginalChat, v => C.HideOriginalChat = v);
             ImGui.TextDisabled("折叠、关闭插件聊天或停用插件时恢复原版聊天。");
-            if (!C.NativeCombatWidgets) changed |= Toggle("备用单栏镜像", C.ShowSkills, v => C.ShowSkills = v);
+            changed |= Toggle("所有已显示热键栏采用直角边框", C.SquareHotbars, v => C.SquareHotbars = v);
+            changed |= Toggle("小地图方形外框", C.SquareMinimap, v => C.SquareMinimap = v);
+            ImGui.TextWrapped("自动追踪 1–10 栏的原生槽位坐标与大小，无须选择单栏；保留原生冷却、拖放、快捷键与提示。小地图仍使用原生圆形内容，方框不改变地图裁切。");
+            changed |= Toggle("原生标准窗口统一色调与透明度（实验）", C.StyleNativeWindows, v => C.StyleNativeWindows = v);
+            ImGui.TextDisabled($"已显示热键栏 {plugin.NativeStyle.ActiveBars.Count} 个，已换肤窗口 {plugin.NativeStyle.StyledWindows.Count} 个");
+            if (ImGui.TreeNode("原生窗口适配审查／逐窗排除"))
+            {
+                foreach (var entry in plugin.GameUi.Layouts.OrderBy(i => i.Key))
+                {
+                    var excluded = C.ExcludedNativeWindows.Contains(entry.Key);
+                    if (ImGui.Checkbox($"保留原版外观##{entry.Key}", ref excluded))
+                    { if (excluded) C.ExcludedNativeWindows.Add(entry.Key); else C.ExcludedNativeWindows.Remove(entry.Key); changed = true; }
+                    ImGui.SameLine(); ImGui.TextUnformatted(entry.Key + (plugin.NativeStyle.StyledWindows.Contains(entry.Key) ? " · 标准窗口已适配" : HudGeometry.IsStandardHotbar(entry.Key) ? " · 原生热键栏" : " · 原生内容保留"));
+                }
+                ImGui.TreePop();
+            }
             changed |= Toggle("其他 UI 使用圆角", C.Rounded, v => C.Rounded = v);
             changed |= Toggle("显示面板背景", C.Glass, v => C.Glass = v);
             ImGui.TextDisabled("本版无背景模糊；玻璃开关影响背景透明度。");
@@ -498,13 +474,7 @@ internal sealed partial class UserInterface(Plugin plugin)
             ImGui.Separator();
             ImGui.TextWrapped("游戏交互包括打开游戏窗口、发送聊天及读取/点击热键栏。国服 soil 接口须在本机验证；推荐用实际安装目录重新编译。");
             changed |= Toggle("启用游戏交互", C.NativeInteractions, v => C.NativeInteractions = v);
-            if (!C.NativeCombatWidgets)
-            {
-            var bar = C.Hotbar + 1;
-            if (ImGui.SliderInt("镜像热键栏", ref bar, 1, 10)) { C.Hotbar = bar - 1; changed = true; }
-            var skillSize = C.SkillSize;
-            if (ImGui.SliderFloat("技能格尺寸", ref skillSize, 32, 72, "%.0f")) { C.SkillSize = skillSize; changed = true; }
-            }
+
             if (ImGui.CollapsingHeader("顶部入口"))
                 foreach (var entry in Configuration.TopLabels)
                     changed |= Toggle(entry.Value, C.TopSections.GetValueOrDefault(entry.Key, true), v => C.TopSections[entry.Key] = v);

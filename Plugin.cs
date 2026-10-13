@@ -42,6 +42,7 @@ public sealed class Plugin : IDalamudPlugin
     internal int HistoryRevision;
     private readonly OriginalChatVisibility originalChat = new();
     internal readonly GameUiController GameUi = new();
+    internal readonly NativeUiStyling NativeStyle = new();
 
     public Plugin()
     {
@@ -56,6 +57,7 @@ public sealed class Plugin : IDalamudPlugin
         Framework.Update += OnUpdate;
         originalChat.Register();
         GameUi.Register();
+        NativeStyle.Register();
         Interface.UiBuilder.Draw += Draw;
         Interface.UiBuilder.OpenConfigUi += OpenSettings;
         Interface.UiBuilder.OpenMainUi += OpenSettings;
@@ -75,6 +77,7 @@ public sealed class Plugin : IDalamudPlugin
     private void OnUpdate(IFramework framework)
     {
         GameUi.Update();
+        NativeStyle.Update();
         originalChat.Update();
     }
 
@@ -106,6 +109,7 @@ public sealed class Plugin : IDalamudPlugin
         try { ui.Draw(loggedIn); drawn = true; }
         finally
         {
+            NativeStyle.Rendered(drawn && loggedIn && Config.Enabled);
             var hideAll = drawn && loggedIn && Config.Enabled && !Config.ShowOriginalUi;
             if (hideAll)
             {
@@ -138,6 +142,7 @@ public sealed class Plugin : IDalamudPlugin
     {
         Framework.Update -= OnUpdate;
         originalChat.Dispose();
+        NativeStyle.Dispose();
         GameUi.Dispose();
         Chat.ChatMessage -= OnChat;
         Interface.UiBuilder.Draw -= Draw;

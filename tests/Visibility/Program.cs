@@ -32,3 +32,21 @@ Check(!GameUiVisibilityPolicy.ShouldHide("_Parameter",false,true,false,false),"r
 Check(GameUiVisibilityPolicy.ShouldHide("_DTR",false,true,false,true),"replace native server info with custom toolbar");
 Check(!GameUiVisibilityPolicy.ShouldHide("Inventory",false,true,true,true),"keep ordinary native windows in original UI mode");
 Check(GameUiVisibilityPolicy.ShouldHide("_ActionBar",true,false,false,false),"legacy full-hide remains opt-in");
+
+Check(HudGeometry.IsStandardHotbar("_ActionBar") && HudGeometry.IsStandardHotbar("_ActionBar01") && HudGeometry.IsStandardHotbar("_ActionBar09"), "detect primary and all numbered standard bars");
+Check(!HudGeometry.IsStandardHotbar("_ActionBar10") && !HudGeometry.IsStandardHotbar("_ActionBarFoo") && !HudGeometry.IsStandardHotbar("_ActionBar00"), "reject unsupported addon names without unsafe casts");
+Check(HudGeometry.Valid(new System.Numerics.Vector2(-20, 40), new System.Numerics.Vector2(44, 88)), "allow partially off-screen native slots");
+Check(!HudGeometry.Valid(new System.Numerics.Vector2(float.NaN, 0), new System.Numerics.Vector2(44)) && !HudGeometry.Valid(System.Numerics.Vector2.Zero, new System.Numerics.Vector2(0, 40)), "reject malformed slot bounds");
+Check(!GameUiVisibilityPolicy.ShouldHide("_ActionBar09",true,false,false,false,true),"styled native bars survive legacy hide mode");
+Check(!GameUiVisibilityPolicy.ShouldHide("_NaviMap",true,false,false,false,false,true),"square minimap survives global hide");
+
+var appearance = new NativeAppearanceState();
+var initial = new NativeAppearance(255,100,110,120);var custom = new NativeAppearance(80,40,50,60);
+appearance.Change("Inventory",1,2,initial,custom);appearance.Change("Inventory",1,2,custom,custom);
+Check(appearance.Change("Inventory",1,2,custom,null)==initial,"restore original native color and alpha after repeated styling");
+appearance.Change("Inventory",1,2,initial,custom);
+Check(appearance.Change("Inventory",3,2,custom,null)==null,"do not restore colors across recreated addon identity");
+appearance.Change("Inventory",1,2,initial,custom);appearance.Forget("Inventory");
+Check(appearance.Change("Inventory",1,2,custom,null)==null,"forget colors before native addon finalization");
+appearance.Change("A",1,2,initial,custom);appearance.Change("A",1,3,initial with {Alpha=0},custom);
+Check(appearance.Change("A",1,3,custom,null)?.Alpha==0 && appearance.Change("A",1,2,custom,null)==initial,"restore separate nodes including originally transparent decorations");

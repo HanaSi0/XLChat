@@ -24,3 +24,11 @@ var toolbar = new Configuration();toolbar.TopSections["sound"]=false;
 var roundtrip = JsonConvert.DeserializeObject<Configuration>(JsonConvert.SerializeObject(toolbar))!;roundtrip.Normalize();
 if(roundtrip.TopSections["sound"]||!roundtrip.TopSections["dtr"])throw new Exception("Toolbar sections failed to persist");
 Console.WriteLine("PASS: independent toolbar sections persist");
+
+var styled = new Configuration { StyleNativeWindows = true, SquareMinimap = false };styled.ExcludedNativeWindows.Add("Inventory");
+var migrated=JsonConvert.DeserializeObject<Configuration>(JsonConvert.SerializeObject(styled))!;migrated.Normalize();
+if(!migrated.StyleNativeWindows||migrated.SquareMinimap||!migrated.ExcludedNativeWindows.Contains("Inventory"))throw new Exception("Native style roundtrip failed");
+Console.WriteLine("PASS: native style overrides and per-window exclusions persist");
+var old=JsonConvert.DeserializeObject<Configuration>("{\"Version\":2,\"TopSections\":{\"sound\":false},\"ExcludedNativeWindows\":null}")!;old.Normalize();
+if(old.StyleNativeWindows||!old.SquareHotbars||!old.TopSections["gamewindows"]||old.TopSections["sound"]||old.ExcludedNativeWindows is null)throw new Exception("Style migration failed");
+Console.WriteLine("PASS: v2 migration preserves disabled entries and native windows default to original appearance");

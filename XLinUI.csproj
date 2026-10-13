@@ -1,6 +1,6 @@
 <Project Sdk="Dalamud.NET.Sdk/15.0.0">
   <PropertyGroup>
-    <Version>0.4.0</Version>
+    <Version>0.5.0</Version>
     <Author>HanaSi0</Author>
     <Name>XLinUI</Name>
     <Punchline>居中状态栏、简洁聊天和生命魔力，保留原版战斗组件。</Punchline>

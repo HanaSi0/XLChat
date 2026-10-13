@@ -71,7 +71,7 @@ internal sealed unsafe class GameUiController : IDisposable
                 Layouts[name] = new GameLayout(addon->X, addon->Y, addon->Scale, node->Width, node->Height, layout.Visible);
         }
         var config = Plugin.InstanceConfig;
-        var desired = live && GameUiVisibilityPolicy.ShouldHide(name, hideAll, config.NativeCombatWidgets, config.ShowStatus, config.ShowTop);
+        var desired = live && GameUiVisibilityPolicy.ShouldHide(name, hideAll, config.NativeCombatWidgets, config.ShowStatus, config.ShowTop, config.SquareHotbars, config.SquareMinimap);
         if (!desired && !active) return;
         var visible = state.Change(name, (nint)addon, (nint)node, node->IsVisible(), desired);
         if (visible.HasValue) node->ToggleVisibility(visible.Value);
