@@ -4,7 +4,7 @@ XLChat 基于 **Chat Two 源码重建**，由 **HanaSi0** 继续开发与维护�
 
 Chat Two 原作者：**Infi、Anna**。原项目：[Infiziert90/ChatTwo](https://github.com/Infiziert90/ChatTwo)。感谢原作者提供的聊天界面、频道筛选与消息处理实现。
 
-当前版本 **0.1.0**，构建目标为国服 **soil XIVLauncher / Dalamud API 15**。实际国服兼容性以游戏内运行结果为准。
+当前版本 **1.0.0**，构建目标为国服 **soil XIVLauncher / Dalamud API 15**。实际国服兼容性以游戏内运行结果为准。
 
 ## Thanks to
 
@@ -12,7 +12,7 @@ The original dev Anna~
 
 ## 安装
 
-[下载 XLChat.zip](https://github.com/HanaSi0/XLChat/releases/download/v0.1.0/XLChat.zip)，完整解压安装包，保留主 DLL 和全部依赖文件。
+[下载 XLChat.zip](https://github.com/HanaSi0/XLChat/releases/download/v1.0.0/XLChat.zip)，完整解压安装包，保留主 DLL 和全部依赖文件。
 
 Dalamud 自定义插件仓库：
 
