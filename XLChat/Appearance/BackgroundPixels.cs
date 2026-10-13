@@ -39,7 +39,9 @@ public sealed class BackgroundProcessor
         for(var y=0;y<size;y++)for(var x=0;x<size;x++)
         {
             var dx=(x-60f)/120;var dy=(y-50f)/100;
-            var value=(byte)Math.Clamp(110+70*Math.Exp(-(dx*dx+dy*dy))-y*.15,0,255);
+            var glow=70*Math.Exp(-(dx*dx+dy*dy));
+            var noise=((x*73+y*151)%17-8)*.35;
+            var value=(byte)Math.Clamp(125+glow-y*.12+noise,0,255);
             var i=(y*size+x)*4;pixels[i]=pixels[i+1]=pixels[i+2]=value;pixels[i+3]=255;
         }
         return new(size,size,ImageEffects.Blur(pixels,size,size,Math.Clamp(radius,1,32)));

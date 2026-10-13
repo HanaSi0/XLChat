@@ -67,5 +67,5 @@ if(knownTell.MatchTellTarget(peer,false))throw new Exception("Different friends 
 var style=new XLChat.Appearance.AppearanceOptions{IncomingBubble=new(float.NaN,2,-1,.4f),BubbleRounding=float.NaN};style.Normalize();
 if(style.IncomingBubble.X!=0||style.IncomingBubble.Y!=1||style.IncomingBubble.Z!=0||style.BubbleRounding!=10)throw new Exception("Invalid bubble settings not normalized");
 Console.WriteLine("PASS: private recipient isolation and bubble settings");
-if(XLChat.Ui.ChatLog.ChatLog.ClampSidebarWidth(0,500)!=120 || XLChat.Ui.ChatLog.ChatLog.ClampSidebarWidth(900,500)!=300 || XLChat.Ui.ChatLog.ChatLog.ClampSidebarWidth(float.NaN,500)!=160 || XLChat.Ui.ChatLog.ChatLog.ClampSidebarWidth(50,100)!=120)throw new Exception("Sidebar minimum width or conversation reservation failed");
+if(XLChat.Ui.ChatLog.ChatLog.ClampSidebarWidth(0,500)!=96 || XLChat.Ui.ChatLog.ChatLog.ClampSidebarWidth(900,500)!=300 || XLChat.Ui.ChatLog.ChatLog.ClampSidebarWidth(float.NaN,500)!=160 || XLChat.Ui.ChatLog.ChatLog.ClampSidebarWidth(50,100)!=96)throw new Exception("Sidebar minimum width or conversation reservation failed");
 Console.WriteLine("PASS: sidebar minimum width, invalid settings and conversation space reservation");

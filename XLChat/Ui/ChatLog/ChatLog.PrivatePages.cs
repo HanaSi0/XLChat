@@ -33,8 +33,7 @@ public partial class ChatLog
 
     private void DrawPrivatePageCreator()
     {
-        ImGui.TextUnformatted("XLChat");
-        if (ImGui.Button("＋ 新建私聊")) ImGui.OpenPopup("private-page-create");
+        if (ImGuiUtil.IconButton(Dalamud.Interface.FontAwesomeIcon.Plus, tooltip: "新建私聊")) ImGui.OpenPopup("private-page-create");
         using var popup = ImRaii.Popup("private-page-create");
         if (!popup.Success) return;
         ImGui.TextUnformatted("独立私聊页面");

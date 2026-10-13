@@ -237,8 +237,11 @@ public partial class ChatLog : Window, IChatWindow
         ChangeTab(newIndex);
     }
 
+    private double pageTransitionStarted = -1;
+
     private void TabSwitched(Tab newTab, Tab previousTab)
     {
+        pageTransitionStarted = ImGui.GetTime();
         // Use the fixed channel if set by the user, or set it to the current tabs channel if this tab wasn't accessed before
         if (newTab.Channel is not null)
             newTab.CurrentChannel.Channel = newTab.Channel.Value;
@@ -407,8 +410,8 @@ public partial class ChatLog : Window, IChatWindow
         ImGui.SameLine();
 
         var buttonWidth = ImGuiUtil.CalcIconButtonSize().X;
-        var showNovice = Plugin.Config.ShowNoviceNetwork && GameFunctions.GameFunctions.IsMentor();
-        var buttonsRight = 1 + (showNovice ? 1 : 0) + (Plugin.Config.ShowHideButton ? 1 : 0);
+        var showNovice = Plugin.Config.ShowNoviceNetwork;
+        var buttonsRight = 2 + (showNovice ? 1 : 0) + (Plugin.Config.ShowHideButton ? 1 : 0);
         var inputWidth = ImGui.GetContentRegionAvail().X - buttonWidth * buttonsRight - ImGui.GetStyle().ItemSpacing.X * buttonsRight;
         InputHandler.DrawInputArea(activeTab, inputWidth, ref TellSpecial);
 
@@ -417,6 +420,14 @@ public partial class ChatLog : Window, IChatWindow
         if (ImGuiUtil.IconButton(FontAwesomeIcon.Cog))
             Plugin.SettingsWindow.Toggle();
 
+        ImGui.SameLine();
+        DrawPrivatePageCreator();
+        if (showNovice)
+        {
+            ImGui.SameLine();
+            if (ImGuiUtil.IconButton(FontAwesomeIcon.Leaf, tooltip: "加入新手频道（由游戏判断资格）"))
+                GameFunctions.GameFunctions.ClickNoviceNetworkButton();
+        }
         if (Plugin.Config.ShowHideButton)
         {
             ImGui.SameLine();
@@ -427,13 +438,7 @@ public partial class ChatLog : Window, IChatWindow
         if (ImGui.IsWindowHovered(ImGuiHoveredFlags.ChildWindows))
             InputHandler.LastActivityTime = InputHandler.FrameTime;
 
-        if (!showNovice)
-            return;
 
-        ImGui.SameLine();
-
-        if (ImGuiUtil.IconButton(FontAwesomeIcon.Leaf))
-            GameFunctions.GameFunctions.ClickNoviceNetworkButton();
     }
 
     public Dictionary<string, InputChannel> GetValidChannels()
@@ -605,6 +610,8 @@ public partial class ChatLog : Window, IChatWindow
         if (!child.Success)
             return;
 
+        var progress = Math.Clamp((ImGui.GetTime() - pageTransitionStarted) / .16, 0, 1);
+        using var transition = ImRaii.PushStyle(ImGuiStyleVar.Alpha, ImGui.GetStyle().Alpha * (float)(.88 + .12 * progress));
         if (!Plugin.Config.Appearance.MessageBubbles && tab.DisplayTimestamp && Plugin.Config.PrettierTimestamps)
             DrawLogTableStyle(tab, handler, switchedTab);
         else
@@ -917,8 +924,6 @@ public partial class ChatLog : Window, IChatWindow
         {
             if (child)
             {
-                DrawPrivatePageCreator();
-                ImGui.Spacing();
                 ImGui.TextDisabled("聊天页面");
                 var previousTab = Plugin.CurrentTab;
                 using var rowStyle = ImRaii.PushStyle(ImGuiStyleVar.ItemSpacing, new Vector2(8, 7));
@@ -963,9 +968,10 @@ public partial class ChatLog : Window, IChatWindow
         {
             var page = Plugin.Config.Tabs[currentTab];
             page.Unread = 0;
-            ImGui.TextUnformatted(page.TellTarget.IsSet() ? page.TellTarget.ToTargetString() : page.Name);
+            var headingStart = ImGui.GetCursorPosY();
+            ImGui.TextWrapped(page.TellTarget.IsSet() ? page.TellTarget.ToTargetString() : page.Name);
             ImGui.Separator();
-            DrawMessageLog(page, InputHandler.PayloadHandler, Math.Max(1, childHeight - ImGui.GetTextLineHeightWithSpacing() - 8), hasTabSwitched);
+            DrawMessageLog(page, InputHandler.PayloadHandler, Math.Max(1, childHeight - (ImGui.GetCursorPosY() - headingStart)), hasTabSwitched);
         }
 
         Plugin.WantedTab = null;

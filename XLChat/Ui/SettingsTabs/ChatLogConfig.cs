@@ -32,7 +32,7 @@ public sealed class ChatLogConfig : ISettingsTab
             ImGuiUtil.OptionCheckbox(ref Mutable.SidebarTabView, Language.Options_SidebarTabView_Name, string.Format(Language.Options_SidebarTabView_Description, Plugin.PluginName));
             ImGui.Spacing();
 
-            ImGuiUtil.OptionCheckbox(ref Mutable.ShowNoviceNetwork, Language.Options_ShowNoviceNetwork_Name, Language.Options_ShowNoviceNetwork_Description);
+            ImGuiUtil.OptionCheckbox(ref Mutable.ShowNoviceNetwork, "显示加入新手频道按钮", "在新建私聊加号右侧显示；加入资格由游戏判断。");
             ImGui.Spacing();
 
             ImGuiUtil.OptionCheckbox(ref Mutable.ShowHideButton, Language.Options_ShowHideButton_Name, Language.Options_ShowHideButton_Description);

@@ -62,6 +62,15 @@ public sealed class ChatBackgroundRenderer : IDisposable
             shade=new Vector4(shade.X*tint.X,shade.Y*tint.Y,shade.Z*tint.Z,alpha);
             draw.AddImageRounded(texture.Handle,start,end,uv0,uv1,ImGui.ColorConvertFloat4ToU32(shade),rounding);
         }
+        if(options.Mode==BackgroundMode.Glass)
+        {
+            // Static surface lighting: no framebuffer sampling or per-frame texture work.
+            var inset=1*ImGuiHelpers.GlobalScale;
+            var top=start+new Vector2(inset,inset);
+            var bottom=end-new Vector2(inset,inset);
+            draw.AddRect(top,bottom,ImGui.ColorConvertFloat4ToU32(new Vector4(1,1,1,.10f*alpha)),rounding);
+            draw.AddLine(top+new Vector2(rounding,0),new Vector2(bottom.X-rounding,top.Y),ImGui.ColorConvertFloat4ToU32(new Vector4(1,1,1,.16f*alpha)));
+        }
         draw.PopClipRect();
     }
     public void Dispose()

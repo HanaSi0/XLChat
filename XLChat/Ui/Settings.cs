@@ -16,6 +16,7 @@ public sealed class SettingsWindow : Window
     private Configuration Mutable { get; }
     private List<ISettingsTab> Tabs { get; }
     private int CurrentTab;
+    private double transitionStarted = -1;
 
     public SettingsWindow(Plugin plugin) : base($"{Language.Settings_Title.Format(Plugin.PluginName)}###xlchat-settings")
     {
@@ -93,6 +94,7 @@ public sealed class SettingsWindow : Window
                     if (!ImGui.Selectable($"{Tabs[i].Name}###tab-{i}", CurrentTab == i))
                         continue;
 
+                    if (CurrentTab != i) transitionStarted = ImGui.GetTime();
                     CurrentTab = i;
                     changed = true;
                 }
@@ -104,7 +106,11 @@ public sealed class SettingsWindow : Window
 
                 using var child = ImRaii.Child("##xlchat-settings", new Vector2(-1, height));
                 if (child.Success)
+                {
+                    var progress = Math.Clamp((ImGui.GetTime() - transitionStarted) / .16, 0, 1);
+                    using var fade = ImRaii.PushStyle(ImGuiStyleVar.Alpha, style.Alpha * (float)(.88 + .12 * progress));
                     Tabs[CurrentTab].Draw(changed);
+                }
             }
         }
 

@@ -8,7 +8,7 @@ public partial class ChatLog
 {
     // Reserve room for both navigation and conversation, including on small windows.
     public static float ClampSidebarWidth(float requested, float available)
-        => Math.Clamp(float.IsFinite(requested) ? requested : 160, 120, Math.Max(120, available - 200));
+        => Math.Clamp(float.IsFinite(requested) ? requested : 160, 96, Math.Max(96, available - 200));
 
     private static bool DrawSidebarPage(string label, string unread, int index, bool selected)
     {

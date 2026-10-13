@@ -242,6 +242,7 @@ public unsafe class GameFunctions : IDisposable
     public static void ClickNoviceNetworkButton()
     {
         var agent = AgentChatLog.Instance();
+        if (agent == null) return;
         // case 3
         var value = new AtkValue { Type = ValueType.Int, Int = 3, };
         var result = 0;
