@@ -274,8 +274,8 @@ public partial class ChatLog : Window, IChatWindow
         if (!Plugin.Config.ShowTitleBar)
             Flags |= ImGuiWindowFlags.NoTitleBar;
 
-        if (LastViewport == ImGuiHelpers.MainViewport.Handle && !WasDocked)
-            BgAlpha = Plugin.Config.WindowAlpha / 100f;
+        Flags|=ImGuiWindowFlags.NoBackground;
+        BgAlpha=0;
 
         LastViewport = ImGui.GetWindowViewport().Handle;
         WasDocked = ImGui.IsWindowDocked();
@@ -332,6 +332,7 @@ public partial class ChatLog : Window, IChatWindow
 
     public override void Draw()
     {
+        Plugin.Background.Draw(Plugin.Config.Appearance,Plugin.Config.WindowAlpha,!Flags.HasFlag(ImGuiWindowFlags.NoTitleBar));
         DrewThisFrame = true;
         try
         {

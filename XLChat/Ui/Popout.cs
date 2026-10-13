@@ -92,15 +92,14 @@ public class Popout : Window, IChatWindow
         if (!Tab.CanResize)
             Flags |= ImGuiWindowFlags.NoResize;
 
-        if (!Plugin.ChatLog.PopOutDocked[Idx])
-        {
-            var alpha = Tab.IndependentOpacity ? Tab.Opacity : Plugin.Config.WindowAlpha;
-            BgAlpha = alpha / 100f;
-        }
+        Flags|=ImGuiWindowFlags.NoBackground;
+        BgAlpha=0;
+
     }
 
     public override void Draw()
     {
+        Plugin.Background.Draw(Plugin.Config.Appearance,Tab.IndependentOpacity?Tab.Opacity:Plugin.Config.WindowAlpha,!Flags.HasFlag(ImGuiWindowFlags.NoTitleBar));
         using var id = ImRaii.PushId($"popout-{Tab.Identifier}");
 
         LastWindowSize = ImGui.GetWindowSize();

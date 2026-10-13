@@ -62,6 +62,7 @@ public sealed class Plugin : IDalamudPlugin
     public IpcManager Ipc { get; }
     public ExtraChat ExtraChat { get; }
     public TypingIpc TypingIpc { get; }
+    public Appearance.ChatBackgroundRenderer Background {get;}=new();
     public FontManager FontManager { get; }
 
     public readonly ServerCore ServerCore;
@@ -91,6 +92,7 @@ public sealed class Plugin : IDalamudPlugin
             GameStarted = Process.GetCurrentProcess().StartTime.ToUniversalTime();
 
             Config = Interface.GetPluginConfig() as Configuration ?? new Configuration();
+            Config.Appearance??=new();Config.Appearance.Normalize();
 
             if (Config.Tabs.Count == 0)
                 Config.Tabs.Add(TabsUtil.VanillaGeneral);
@@ -185,6 +187,7 @@ public sealed class Plugin : IDalamudPlugin
 
         WindowSystem?.RemoveAllWindows();
         ChatLog?.Dispose();
+        Background.Dispose();FontManager?.Dispose();
         DbViewer?.Dispose();
         InputPreview?.Dispose();
         SettingsWindow?.Dispose();
@@ -218,8 +221,9 @@ public sealed class Plugin : IDalamudPlugin
         Interface.UiBuilder.DisableUserUiHide = !Config.HideWhenUiHidden;
         DefaultText = ImGui.GetStyle().Colors[(int)ImGuiCol.Text];
 
-        using ((Config.FontsEnabled ? FontManager.RegularFont : FontManager.Axis).Push())
-            WindowSystem.Draw();
+        Background.Update(Config.Appearance);
+        try{using(FontManager.ActiveFont.Push())WindowSystem.Draw();}
+        finally{FontManager.ReleaseRetiredFonts();}
 
         ChatLog.FinalizeFrame();
         TypingIpc.Update();

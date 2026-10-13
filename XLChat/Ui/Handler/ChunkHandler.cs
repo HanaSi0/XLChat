@@ -113,7 +113,7 @@ public class ChunkHandler
 
         var disposableFont = Plugin.Config.FontsEnabled && Plugin.FontManager.ItalicFont != null
             ? Plugin.FontManager.ItalicFont
-            : Plugin.FontManager.AxisItalic;
+            : Plugin.Config.EnsureChineseFont?Plugin.FontManager.RegularFont:Plugin.FontManager.AxisItalic;
         if (text.Italic)
             disposableFont.Push();
 

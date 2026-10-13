@@ -5,3 +5,4 @@ Modifications by HanaSi0. Licensed under the EUPL, Version 1.2.
 Modifications: project/assembly/UI/commands renamed to XLChat; GIF decoder and SQLite dependency updated; changelog output disabled.
 Modification date: 2026-10-13.
 StbImageSharp 2.30.16 is distributed under its Unlicense option.
+Additional modifications: Chinese glyph coverage and fallback, font handle cleanup, cached CPU backgrounds, picture import and appearance controls.

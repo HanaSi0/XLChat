@@ -94,6 +94,8 @@ public class Configuration : IPluginConfiguration
     public bool ShowEmotes = true;
     public HashSet<string> BlockedEmotes = [];
 
+    public bool EnsureChineseFont = true;
+    public Appearance.AppearanceOptions Appearance = new();
     public bool FontsEnabled = true;
     public ExtraGlyphRanges ExtraGlyphRanges = 0;
     public float FontSizeV2 = 12.75f;
@@ -187,6 +189,8 @@ public class Configuration : IPluginConfiguration
         Use24HourClock = other.Use24HourClock;
         ShowEmotes = other.ShowEmotes;
         BlockedEmotes = other.BlockedEmotes;
+        EnsureChineseFont = other.EnsureChineseFont;
+        Appearance=(other.Appearance??new()).Clone();Appearance.Normalize();
         FontsEnabled = other.FontsEnabled;
         ItalicEnabled = other.ItalicEnabled;
         ExtraGlyphRanges = other.ExtraGlyphRanges;
@@ -196,7 +200,7 @@ public class Configuration : IPluginConfiguration
         ItalicFontV2 = other.ItalicFontV2;
         SymbolsFontSizeV2 = other.SymbolsFontSizeV2;
         TooltipOffset = other.TooltipOffset;
-        WindowAlpha = other.WindowAlpha;
+        WindowAlpha = float.IsFinite(other.WindowAlpha)?Math.Clamp(other.WindowAlpha,0,100):100;
         ChatColours = other.ChatColours.ToDictionary(entry => entry.Key, entry => entry.Value);
         Tabs = other.Tabs.Select(t => t.Clone()).ToList();
         OverrideStyle = other.OverrideStyle;

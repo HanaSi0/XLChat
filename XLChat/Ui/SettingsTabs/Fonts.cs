@@ -22,6 +22,15 @@ public class Fonts : ISettingsTab
     {
         using var wrap = ImRaii.TextWrapPos(0.0f);
 
+        ImGui.Checkbox("自动补全简体中文（推荐）",ref Mutable.EnsureChineseFont);
+        if(ImGui.Button("修复中文缺字（恢复默认字体）"))
+        {
+            Mutable.EnsureChineseFont=Mutable.FontsEnabled=true;
+            var size=Mutable.GlobalFontV2.SizePt;
+            Mutable.GlobalFontV2=new SingleFontSpec{FontId=new DalamudAssetFontAndFamilyId(DalamudAsset.NotoSansCjkRegular),SizePt=size};
+            Mutable.JapaneseFontV2=new SingleFontSpec{FontId=new DalamudAssetFontAndFamilyId(DalamudAsset.NotoSansCjkMedium),SizePt=size};
+        }
+        ImGui.TextWrapped("自动加入中文、标点和全角字形，并使用 Windows 中文字体补缺。关闭自定义字体时也可保留中文补全。");
         ImGui.Checkbox(Language.Options_FontsEnabled, ref Mutable.FontsEnabled);
         ImGui.Spacing();
 

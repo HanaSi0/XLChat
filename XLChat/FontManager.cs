@@ -1,4 +1,3 @@
-using XLChat.Http;
 using Dalamud.Interface;
 using Dalamud.Interface.GameFonts;
 using Dalamud.Interface.ManagedFontAtlas;
@@ -7,7 +6,7 @@ using Dalamud.Bindings.ImGui;
 
 namespace XLChat;
 
-public class FontManager
+public class FontManager : IDisposable
 {
     public IFontHandle Axis = null!;
     public IFontHandle AxisItalic = null!;
@@ -17,7 +16,6 @@ public class FontManager
 
     public IFontHandle FontAwesome = null!;
 
-    public readonly byte[] GameSymFont;
 
     private ushort[] Ranges = [];
     private ushort[] JpRange = [];
@@ -29,23 +27,16 @@ public class FontManager
         36f, 40f, 45f, 46f, 68f, 90f,
     ];
 
-    public FontManager()
+    private readonly Lazy<byte[]> symbolFont=new(LoadSymbolFont);
+    public byte[] GameSymFont=>symbolFont.Value;
+    // Browser exports need this file; the in-game atlas uses Dalamud's game symbols.
+    // Fetch only when an export requests it, never during plugin initialization.
+    private static byte[] LoadSymbolFont()
     {
-        var filePath = Path.Combine(Plugin.Interface.ConfigDirectory.FullName, "FFXIV_Lodestone_SSF.ttf");
-        if (File.Exists(filePath))
-        {
-            GameSymFont = File.ReadAllBytes(filePath);
-        }
-        else
-        {
-            GameSymFont = ServerCore.HttpClient.GetAsync("https://img.finalfantasyxiv.com/lds/pc/global/fonts/FFXIV_Lodestone_SSF.ttf")
-                .Result
-                .Content
-                .ReadAsByteArrayAsync()
-                .Result;
-
-            Dalamud.Utility.FilesystemUtil.WriteAllBytesSafe(filePath, GameSymFont);
-        }
+        var path=Path.Combine(Plugin.Interface.ConfigDirectory.FullName,"FFXIV_Lodestone_SSF.ttf");
+        if(File.Exists(path))return File.ReadAllBytes(path);
+        var bytes=XLChat.Http.ServerCore.HttpClient.GetByteArrayAsync("https://img.finalfantasyxiv.com/lds/pc/global/fonts/FFXIV_Lodestone_SSF.ttf").GetAwaiter().GetResult();
+        Dalamud.Utility.FilesystemUtil.WriteAllBytesSafe(path,bytes);return bytes;
     }
 
     private unsafe void SetUpRanges()
@@ -95,12 +86,13 @@ public class FontManager
             if (Plugin.Config.ExtraGlyphRanges.HasFlag(extraRange))
                 ranges.Add(extraRange.Range());
 
-        Ranges = BuildRange(null, ranges.ToArray());
+        Ranges = BuildRange(Plugin.Config.EnsureChineseFont?Appearance.ChineseFontPolicy.Ranges:null, ranges.ToArray());
         JpRange = BuildRange(GlyphRangesJapanese.GlyphRanges);
     }
 
     public void BuildFonts()
     {
+        foreach(var old in new[]{Axis,AxisItalic,RegularFont,ItalicFont,FontAwesome})if(old is not null)retired.Add(old);
         SetUpRanges();
 
         Axis = Plugin.Interface.UiBuilder.FontAtlas.NewGameFontHandle(new GameFontStyle(GameFontFamily.Axis, SizeInPx(Plugin.Config.FontSizeV2)));
@@ -119,14 +111,20 @@ public class FontManager
             e => e.OnPreBuild(
                 tk =>
                 {
-                    var config = new SafeFontConfig {SizePt = Plugin.Config.GlobalFontV2.SizePt, GlyphRanges = Ranges};
-                    config.MergeFont = Plugin.Config.GlobalFontV2.FontId.AddToBuildToolkit(tk, config);
+                    var config = new SafeFontConfig {SizePt = Plugin.Config.FontsEnabled?Plugin.Config.GlobalFontV2.SizePt:Plugin.Config.FontSizeV2, GlyphRanges = Ranges};
+                    var primary=Plugin.Config.FontsEnabled?Plugin.Config.GlobalFontV2.FontId:new Dalamud.Interface.FontIdentifier.DalamudAssetFontAndFamilyId(Dalamud.DalamudAsset.NotoSansCjkRegular);
+                    config.MergeFont = primary.AddToBuildToolkit(tk, config);
 
                     config.SizePt = Plugin.Config.JapaneseFontV2.SizePt;
                     config.GlyphRanges = JpRange;
                     Plugin.Config.JapaneseFontV2.FontId.AddToBuildToolkit(tk, config);
 
+                    config.SizePt=Plugin.Config.FontsEnabled?Plugin.Config.GlobalFontV2.SizePt:Plugin.Config.FontSizeV2;
+                    config.GlyphRanges=Ranges;
+                    if(Plugin.Config.EnsureChineseFont)tk.AttachWindowsDefaultFont(System.Globalization.CultureInfo.GetCultureInfo("zh-CN"),config);
+                    tk.AttachExtraGlyphsForDalamudLanguage(config);
                     config.SizePt = Plugin.Config.SymbolsFontSizeV2;
+                    config.GlyphRanges=null;
                     tk.AddGameSymbol(config);
 
                     tk.Font = config.MergeFont;
@@ -146,7 +144,12 @@ public class FontManager
                         config.GlyphRanges = JpRange;
                         Plugin.Config.JapaneseFontV2.FontId.AddToBuildToolkit(tk, config);
 
+                        config.SizePt=Plugin.Config.ItalicFontV2.SizePt;
+                        config.GlyphRanges=Ranges;
+                        if(Plugin.Config.EnsureChineseFont)tk.AttachWindowsDefaultFont(System.Globalization.CultureInfo.GetCultureInfo("zh-CN"),config);
+                        tk.AttachExtraGlyphsForDalamudLanguage(config);
                         config.SizePt = Plugin.Config.SymbolsFontSizeV2;
+                        config.GlyphRanges=null;
                         tk.AddGameSymbol(config);
 
                         tk.Font = config.MergeFont;
@@ -159,6 +162,10 @@ public class FontManager
         }
     }
 
+    private readonly List<IFontHandle> retired=[];
+    public IFontHandle ActiveFont=>(Plugin.Config.FontsEnabled||Plugin.Config.EnsureChineseFont)?RegularFont:Axis;
+    public void ReleaseRetiredFonts(){foreach(var old in retired)old.Dispose();retired.Clear();}
+    public void Dispose(){ReleaseRetiredFonts();foreach(var font in new[]{Axis,AxisItalic,RegularFont,ItalicFont,FontAwesome})font?.Dispose();}
     public static float SizeInPt(float px) => (float) (px * 3.0 / 4.0);
     public static float SizeInPx(float pt) => (float) (pt * 4.0 / 3.0);
     public static float GetFontSize() => Plugin.Config.FontsEnabled ? Plugin.Config.GlobalFontV2.SizePx : SizeInPx(Plugin.Config.FontSizeV2);

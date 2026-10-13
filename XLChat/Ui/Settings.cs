@@ -34,6 +34,7 @@ public sealed class SettingsWindow : Window
         Tabs =
         [
             new Display(Mutable),
+            new SettingsTabs.Appearance(Plugin,Mutable),
             new ChatLogConfig(Plugin, Mutable),
             new Emote(Plugin, Mutable),
             new Preview(Mutable),
@@ -130,7 +131,9 @@ public sealed class SettingsWindow : Window
         // calculate all conditions before updating config
         var hideChanged = !Mutable.HideChat && Mutable.HideChat != Plugin.Config.HideChat;
         var languageChanged = Mutable.LanguageOverride != Plugin.Config.LanguageOverride;
-        var fontChanged = Mutable.GlobalFontV2 != Plugin.Config.GlobalFontV2
+        var fontChanged = Mutable.EnsureChineseFont != Plugin.Config.EnsureChineseFont
+                          || Mutable.FontsEnabled != Plugin.Config.FontsEnabled
+                          || Mutable.GlobalFontV2 != Plugin.Config.GlobalFontV2
                           || Mutable.JapaneseFontV2 != Plugin.Config.JapaneseFontV2
                           || Mutable.ItalicFontV2 != Plugin.Config.ItalicFontV2
                           || Mutable.ExtraGlyphRanges != Plugin.Config.ExtraGlyphRanges;
