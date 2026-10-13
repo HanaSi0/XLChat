@@ -1,9 +1,7 @@
 name: XLChat
 author: HanaSi0
-punchline: 基于 ChatTwo 的聊天插件。
-description: |-
-  基于 ChatTwo 的聊天插件。
-  原作者：Infi、Anna。
+punchline: 基于chattwo重构的聊天框插件
+description: 基于chattwo重构的聊天框插件
 repo_url: https://github.com/HanaSi0/XLChat
 accepts_feedback: true
 tags:

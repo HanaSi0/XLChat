@@ -30,7 +30,7 @@ public sealed class Commands : IDisposable
             Plugin.CommandManager.AddHandler(wrapper.Name, new CommandInfo(Invoke)
             {
                 HelpMessage = wrapper.Description ?? string.Empty,
-                ShowInHelp = wrapper.ShowInHelp,
+                ShowInHelp = false,
             });
         }
     }
