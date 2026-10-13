@@ -183,7 +183,8 @@ public unsafe class GameFunctions : IDisposable
 
     public static InfoProxyCommonList.CharacterData[] GetFriends()
     {
-        return InfoProxyFriendList.Instance()->CharDataSpan.ToArray();
+        var friends = InfoProxyFriendList.Instance();
+        return friends == null ? [] : friends->CharDataSpan.ToArray();
     }
 
     public static void OpenQuestLog(RowRef<Quest> quest)

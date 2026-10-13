@@ -4,7 +4,6 @@ using XLChat.Util;
 using Dalamud.Interface;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Bindings.ImGui;
-using Dalamud.Game.ClientState.Objects.SubKinds;
 using Dalamud.Interface.Colors;
 
 namespace XLChat.Ui.SettingsTabs;
@@ -169,60 +168,29 @@ public sealed class Tabs : ISettingsTab
                     }
                 }
 
-                var player = Plugin.ObjectTable.LocalPlayer;
-                if (tab.Channel == InputChannel.Tell && player != null)
+                if (tab.Channel == InputChannel.Tell)
                 {
-                    ImGui.Checkbox(Language.Options_Tabs_SenderMessages, ref tab.AllSenderMessages);
-                    ImGuiUtil.HelpText(Language.Options_Help_SenderMessagesV2);
-
-                    var worlds = Sheets.WorldsOnDatacenter(player).OrderByDescending(world => world.DataCenter.RowId).ThenBy(world => world.Name.ToString()).ToList();
-
-                    using (ImRaii.ItemWidth(ImGui.GetWindowWidth() / 3f))
+                    if (tab.TellTarget.IsSet())
                     {
-                        ImGui.Text(Language.Options_Header_Target);
-                        ImGui.SameLine();
-
-                        var name = tab.TellTarget.Name;
-                        if (ImGui.InputText("##targetInput", ref name, 21))
-                            tab.TellTarget.Name = name;
-
-                        ImGui.SameLine();
-
-                        var selectedWorld = worlds.FindIndex(world => world.RowId == tab.TellTarget.World);
-                        if (selectedWorld == -1)
-                            selectedWorld = 0;
-
-                        using (var combo = ImRaii.Combo("###player-world", worlds[selectedWorld].Name.ToString()))
-                        {
-                            if (combo.Success)
-                            {
-                                var lastDc = worlds.First().DataCenter.RowId;
-                                foreach (var (idx, world) in worlds.Index())
-                                {
-                                    if (lastDc != world.DataCenter.RowId)
-                                    {
-                                        lastDc = world.DataCenter.RowId;
-                                        ImGui.Separator();
-                                    }
-
-                                    if (ImGui.Selectable(world.Name.ToString(), selectedWorld == idx))
-                                    {
-                                        selectedWorld = idx;
-                                        tab.TellTarget.World = worlds[selectedWorld].RowId;
-                                    }
-                                }
-                            }
-                        }
+                        var server = Sheets.WorldSheet.TryGetRow(tab.TellTarget.World, out var currentWorld)
+                            ? currentWorld.Name.ToString() : tab.TellTarget.World.ToString();
+                        ImGui.TextWrapped("私聊对象：" + tab.TellTarget.Name + "@" + server);
                     }
+                    else ImGui.TextDisabled("尚未选择好友");
 
-                    if (tab.TellTarget.ContentId == 0)
-                        ImGuiUtil.WrappedTextWithColor(ImGuiColors.DalamudOrange, Language.Options_Tabs_ContentIdWarning);
-
-                    var target = (Plugin.TargetManager.SoftTarget ?? Plugin.TargetManager.Target) as IPlayerCharacter;
-                    using (ImRaii.Disabled(target == null))
+                    using var friends = ImRaii.Combo("私聊好友", "从游戏好友列表选择");
+                    if (friends.Success)
                     {
-                        if (ImGui.Button(Language.Options_Tab_SetTarget) && target != null)
-                            tab.TellTarget.FromTarget(target);
+                        var entries = GameFunctions.GameFunctions.GetFriends();
+                        if (entries.Length == 0) ImGui.TextWrapped("当前没有可读取的好友，请先打开游戏好友列表后重试。");
+                        foreach (var friend in entries)
+                        {
+                            var server = Sheets.WorldSheet.TryGetRow(friend.HomeWorld, out var world)
+                                ? world.Name.ToString() : friend.HomeWorld.ToString();
+                            if (!ImGui.Selectable($"{friend.NameString}@{server}##{friend.ContentId}")) continue;
+                            tab.TellTarget = new GameFunctions.Types.TellTarget(friend.NameString, friend.HomeWorld, friend.ContentId, GameFunctions.Types.TellReason.Friend);
+                            tab.AllSenderMessages = false;
+                        }
                     }
                 }
             }
