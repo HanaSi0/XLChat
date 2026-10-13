@@ -173,17 +173,12 @@ internal static unsafe class GameBridge
         return true;
     }
 
-    internal static bool Send(string prefix, string text)
+    internal static bool Send(string route,string recipient,string text)
     {
-        // No arbitrary slash-command execution in the text field.
-        if (text.Length == 0 || text.Contains('\n') || text.Contains('\r') || text.Contains('\0')) return false;
-        if (Encoding.UTF8.GetByteCount(text) > 450) return false;
-        var module = UIModule.Instance();
-        if (module == null) return false;
-        using var value = new Utf8String();
-        value.SetString(prefix + " " + text);
-        module->ProcessChatBoxEntry(&value, saveToHistory: true);
-        return true;
+        if(!ChatPolicy.TryBuild(route,recipient,text,out var entry,out _))return false;
+        var module=UIModule.Instance();if(module==null)return false;
+        using var value=new Utf8String();value.SetString(entry);
+        module->ProcessChatBoxEntry(&value,saveToHistory:true);return true;
     }
 
     internal static SlotInfo ReadSlot(int bar, int index)

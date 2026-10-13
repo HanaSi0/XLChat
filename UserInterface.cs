@@ -23,11 +23,9 @@ internal sealed partial class UserInterface(Plugin plugin)
     private readonly HashSet<string> importedLayouts = [];
     private string draft = "";
     private string notice = "";
-    private int sendChannel;
-    private bool follow = true;
+
     private int lastCount;
-    private readonly string[] sendNames = ["说话", "小队", "部队", "喊话", "呼喊"];
-    private readonly string[] sendCommands = ["/say", "/party", "/fc", "/yell", "/shout"];
+
     private Configuration C => plugin.Config;
     private bool commandsOpen;
     private bool teleportOpen;
@@ -51,7 +49,8 @@ internal sealed partial class UserInterface(Plugin plugin)
 
     internal void ClearInput()
     {
-        draft = search = ""; importedLayouts.Clear();
+        draft = search = tellRecipient = ""; importedLayouts.Clear();
+        channelDrafts.Clear();filteredChat.Clear();chatCacheRevision=-1;ChatAtBottom=false;chatLabels=null;chatSubmitted=default;notice="";expandedChatRows=0;
         bagSlots.Clear(); bagCapacity = 0; bagAvailable = false; lastInventoryRead = default;
         acceptedQuests.Clear(); lastQuestRead = default;
         gearsets.Clear(); currencies.Clear(); currencyRead = default;
@@ -285,136 +284,6 @@ internal sealed partial class UserInterface(Plugin plugin)
         ReadableText.TextDisabled($"{label}   {current:N0} / {maximum:N0}");
     }
 
-    private void DrawChat()
-    {
-        var scale = ImGuiHelpers.GlobalScale;
-        ImGui.SetNextWindowSize(new Vector2(C.ChatWidth, C.ChatHeight) * scale, applyChatSize ? ImGuiCond.Always : ImGuiCond.FirstUseEver);
-        applyChatSize = false;
-        ImGui.SetNextWindowSizeConstraints(new Vector2(380, Math.Max(240, 220 * C.ChatFontScale)) * scale, new Vector2(float.MaxValue));
-        ImGuiHelpers.SetNextWindowPosRelativeMainViewport(new Vector2(30, 150), ImGuiCond.FirstUseEver);
-        ImportLayout("chat", "ChatLog");
-        var open = C.ShowChat;
-        var visible = ImGui.Begin("XLinUI · 聊天###XLinUIChat", ref open, WindowFlags | ImGuiWindowFlags.NoScrollbar);
-        try
-        {
-            if (!visible || !open) return;
-            ChatVisible = true;
-            ImGui.SetWindowFontScale(C.ChatFontScale);
-            var chatSize = ImGui.GetWindowSize() / scale;
-            if (!C.LockWindows && (Math.Abs(C.ChatWidth - chatSize.X) > 1 || Math.Abs(C.ChatHeight - chatSize.Y) > 1))
-            { C.ChatWidth = chatSize.X; C.ChatHeight = chatSize.Y; chatSizeChanged = true; }
-            if (chatSizeChanged && !ImGui.IsMouseDown(ImGuiMouseButton.Left)) { chatSizeChanged = false; plugin.Save(); }
-            if (C.Channels.All(c => c.Id != plugin.ActiveChannel)) plugin.ActiveChannel = C.Channels[0].Id;
-            var channelNow = C.Channels.First(c => c.Id == plugin.ActiveChannel);
-            var sidebar = ImGui.BeginChild("categories", new Vector2(Math.Min(C.ChatSidebarWidth * scale, ImGui.GetContentRegionAvail().X * .35f), 0), !C.HideBorders && !C.TextOnly);
-            try
-            {
-                if (sidebar)
-                {
-                    ReadableText.TextColored(new Vector4(C.Tint, 1), "会话");
-                    ReadableText.TextDisabled("自定义频道分类");
-                    ImGui.Separator();
-                    foreach (var channel in C.Channels)
-                    {
-                        var unread = plugin.Unread.GetValueOrDefault(channel.Id);
-                        var label = channel.Name + (unread > 0 ? $"  {unread}" : "") + "###" + channel.Id;
-                        if (ReadableText.Selectable(label, plugin.ActiveChannel == channel.Id, ImGuiSelectableFlags.None, new Vector2(0, 32 * scale)))
-                        {
-                            plugin.ActiveChannel = channel.Id;
-                            plugin.Unread[channel.Id] = 0;
-                            lastCount = -1;
-                            channelNow = channel;
-                        }
-                    }
-                    ImGui.Spacing();
-                    if (ReadableText.Button("编辑分类", new Vector2(-1, 0))) SettingsOpen = true;
-                    ImGui.Spacing();
-                    var hide = C.HideOriginalChat;
-                    if (ReadableText.Checkbox("隐藏原版聊天", ref hide)) { C.HideOriginalChat = hide; plugin.Save(); }
-                    ReadableText.TextWrapped(C.ShowOriginalUi ? "关闭或折叠此窗口会恢复原版聊天。" : "全局隐藏已开启；顶部按钮可恢复原版 UI。");
-                }
-            }
-            finally { ImGui.EndChild(); }
-            ImGui.SameLine();
-            var conversation = ImGui.BeginChild("conversation", Vector2.Zero, false);
-            try
-            {
-                if (!conversation) { ChatVisible = false; return; }
-                ReadableText.TextColored(new Vector4(C.Tint, 1), channelNow.Name);
-                ImGui.SameLine(); ReadableText.TextDisabled(!C.ShowOriginalUi || C.HideOriginalChat ? "· 原版聊天已隐藏" : "· 原版聊天保留");
-                ImGui.SetNextItemWidth(-1);
-                ImGui.InputTextWithHint("##history-search", "搜索发言人或消息", ref search, 128);
-                var height = Math.Max(80 * scale, ImGui.GetContentRegionAvail().Y - 110 * scale * C.ChatFontScale);
-                var content = ImGui.BeginChild("messages", new Vector2(0, height), !C.HideBorders && !C.TextOnly);
-                try
-                {
-                    if (content)
-                    {
-                        var wasBottom = ImGui.GetScrollY() >= ImGui.GetScrollMaxY() - 8;
-                        var rows = plugin.History.Where(m => (channelNow.Types.Count == 0 || channelNow.Types.Contains(m.Type)) &&
-                            (search.Length == 0 || m.Sender.Contains(search, StringComparison.OrdinalIgnoreCase) || m.Text.Contains(search, StringComparison.OrdinalIgnoreCase))).ToArray();
-                        if (rows.Length == 0) ReadableText.TextDisabled(search.Length == 0 ? "等待新消息…" : "没有匹配的消息。");
-                        ChatLine? previous = null;
-                        foreach (var line in rows)
-                        {
-                            var group = previous is not null && previous.Sender == line.Sender && previous.Type == line.Type && (line.Time - previous.Time).TotalMinutes < 2;
-                            if (!group)
-                            {
-                                if (previous is not null) { ImGui.Spacing(); if (!C.Compact) ImGui.Separator(); }
-                                ReadableText.TextColored(new Vector4(C.Tint, 1), string.IsNullOrWhiteSpace(line.Sender) ? "系统" : line.Sender);
-                                ImGui.SameLine(); ReadableText.TextDisabled($"{ChannelName(line.Type)} · {line.Time:HH:mm}");
-                            }
-                            ReadableText.TextWrapped(line.Text);
-                            if (!C.Compact) ImGui.Spacing();
-                            previous = line;
-                        }
-                        if (follow && (wasBottom || lastCount == -1) && lastCount != plugin.HistoryRevision) ImGui.SetScrollHereY(1);
-                        lastCount = plugin.HistoryRevision;
-                        plugin.Unread[channelNow.Id] = 0;
-                    }
-                }
-                finally { ImGui.EndChild(); }
-                ImGui.SetNextItemWidth(95 * scale);
-                ImGui.Combo("##send-channel", ref sendChannel, sendNames, sendNames.Length);
-                ImGui.SameLine(); ReadableText.Checkbox("跟随消息", ref follow);
-                ImGui.SetNextItemWidth(Math.Max(80, ImGui.GetContentRegionAvail().X - 70 * scale));
-                var enter = ImGui.InputTextWithHint("##message", "输入消息，Enter 发送", ref draft, 500, ImGuiInputTextFlags.EnterReturnsTrue);
-                ImGui.SameLine();
-                if (ReadableText.Button("发送") || enter) Send();
-                ReadableText.TextDisabled("链接操作仍需使用原版聊天；可随时取消隐藏。");
-                if (notice.Length > 0) ReadableText.TextWrapped(notice);
-            }
-            finally { ImGui.EndChild(); }
-        }
-        finally
-        {
-            EndPanel();
-            if (C.ShowChat != open) { C.ShowChat = open; plugin.Save(); ChatVisible = false; }
-        }
-    }
-
-    private static string ChannelName(ushort type) => type switch
-    {
-        10 => "说话", 11 => "呼喊", 12 => "私信发出", 13 => "私信", 14 => "小队", 15 => "团队",
-        24 => "部队", 30 => "喊话", 56 => "回声", 57 => "系统", 60 => "错误",
-        _ => ((XivChatType)type).ToString(),
-    };
-
-    private void Send()
-    {
-        if (!C.NativeInteractions)
-        { notice = "请先在设置中启用游戏交互。原版聊天可正常使用。"; return; }
-        var text = draft.Trim();
-        if (text.Length == 0) return;
-        var submitted = false;
-        Native(() => submitted = GameBridge.Send(sendCommands[sendChannel], text));
-        if (submitted)
-        {
-            draft = ""; notice = "已提交给游戏；发送结果及权限提示以原版聊天为准。";
-        }
-        else notice = "未提交：消息须为单行且不超过 450 个 UTF-8 字节，或游戏 UI 尚未就绪。";
-    }
-
     private void DrawNativeOutlines()
     {
         if (C.TextOnly) return;
@@ -501,53 +370,7 @@ internal sealed partial class UserInterface(Plugin plugin)
                 {
                     try
                     {
-                    var cw = C.ChatWidth; var ch = C.ChatHeight;
-                    if (ImGui.SliderFloat("聊天宽度", ref cw, 380, 1800, "%.0f")) { C.ChatWidth = cw; applyChatSize = true; changed = true; }
-                    if (ImGui.SliderFloat("聊天高度", ref ch, 240, 1200, "%.0f")) { C.ChatHeight = ch; applyChatSize = true; changed = true; }
-                    var sw = C.ChatSidebarWidth; var fs = C.ChatFontScale;
-                    if (ImGui.SliderFloat("频道栏宽度", ref sw, 80, 250, "%.0f")) { C.ChatSidebarWidth = sw; changed = true; }
-                    if (ImGui.SliderFloat("聊天字号比例", ref fs, .7f, 1.6f, "%.2f")) { C.ChatFontScale = fs; changed = true; }
-                    changed |= Toggle("分类聊天", C.ShowChat, v => C.ShowChat = v);
-                    changed |= Toggle("显示插件聊天时隐藏原版聊天", C.HideOriginalChat, v => C.HideOriginalChat = v);
-                    ReadableText.TextDisabled("折叠、关闭插件聊天或停用插件时恢复原版聊天。");
-                    changed |= Toggle("紧凑聊天间距", C.Compact, v => C.Compact = v);
-                    if (ImGui.CollapsingHeader("聊天分类"))
-                    {
-                        ReadableText.TextWrapped("每个分类可选择多个游戏频道。不选频道表示接收全部；删除分类不删除消息。");
-                        Channel? remove = null;
-                        foreach (var channel in C.Channels)
-                        {
-                            ImGui.PushID(channel.Id);
-                            try
-                            {
-                                var name = channel.Name;
-                                if (ImGui.InputText("分类名称", ref name, 32)) { channel.Name = name; changed = true; }
-                                if (C.Channels.Count > 1)
-                                {
-                                    ImGui.SameLine(); if (ReadableText.Button("删除")) remove = channel;
-                                }
-                                if (ImGui.TreeNode("关联游戏频道"))
-                                {
-                                    foreach (var type in Enum.GetValues<XivChatType>().Distinct())
-                                    {
-                                        var id = (ushort)type;
-                                        var selected = channel.Types.Contains(id);
-                                        if (ReadableText.Checkbox($"{type} ({id})", ref selected))
-                                        {
-                                            if (selected) channel.Types.Add(id); else channel.Types.Remove(id);
-                                            changed = true;
-                                        }
-                                    }
-                                    ImGui.TreePop();
-                                }
-                            }
-                            finally { ImGui.PopID(); }
-                        }
-                        if (remove is not null)
-                        { C.Channels.Remove(remove); plugin.Unread.Remove(remove.Id); changed = true; }
-                        if (ReadableText.Button("添加分类")) { C.Channels.Add(new Channel("新分类", [])); changed = true; }
-                    }
-                    ReadableText.TextDisabled("链接操作仍使用原版聊天。最多保留 1000 条消息，退出角色清空。");
+                        DrawChatCustomization(ref changed);
                     }
                     finally { ImGui.EndTabItem(); }
                 }

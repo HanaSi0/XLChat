@@ -7,10 +7,23 @@ internal static class ReadableText
 {
     internal static void TextUnformatted(string text) { Shadow(text, false); ImGui.TextUnformatted(text); }
     internal static void TextWrapped(string text) { Shadow(text, true); ImGui.TextWrapped(text); }
+    internal static void TextWrapped(string text,float width)
+    {
+        width=Math.Max(1,width);
+        if(Plugin.InstanceConfig.TextOutline)Outline(ImGui.GetCursorScreenPos(),text,width);
+        ImGui.PushTextWrapPos(ImGui.GetCursorPosX()+width);
+        try{ImGui.TextUnformatted(text);}finally{ImGui.PopTextWrapPos();}
+    }
     internal static void TextDisabled(string text)
     {
         Shadow(text, false);
         ImGui.TextDisabled(text);
+    }
+    internal static void TextColoredWrapped(Vector4 color,string text,float width)
+    {
+        if(Plugin.InstanceConfig.HighContrastText)color=new Vector4(SurfacePolicy.ReadableColor(new Vector3(color.X,color.Y,color.Z)),color.W);
+        ImGui.PushStyleColor(ImGuiCol.Text,color);
+        try{TextWrapped(text,width);}finally{ImGui.PopStyleColor();}
     }
     internal static void TextColored(Vector4 color, string text)
     {

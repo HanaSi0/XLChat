@@ -15,7 +15,7 @@ if (restored.Opacity != .88f || restored.Hotbar != 9 || restored.Channels.Count 
 Console.WriteLine("PASS: invalid settings recovery");
 
 restored.ChatWidth=float.NaN;restored.ChatHeight=-10;restored.ChatSidebarWidth=999;restored.ChatFontScale=20;restored.Opacity=0;restored.Normalize();
-if(restored.ChatWidth!=780||restored.ChatHeight!=240||restored.ChatSidebarWidth!=250||restored.ChatFontScale!=1.6f||restored.Opacity!=0)throw new Exception("Chat size bounds failed");
+if(restored.ChatWidth!=780||restored.ChatHeight!=200||restored.ChatSidebarWidth!=600||restored.ChatFontScale!=2.5f||restored.Opacity!=0)throw new Exception("Chat size bounds failed");
 Console.WriteLine("PASS: resizable chat bounds and fully transparent background");
 if(!JsonConvert.DeserializeObject<Configuration>("{}")!.NativeCombatWidgets)throw new Exception("Native combat widgets disabled on migration");
 Console.WriteLine("PASS: native hotbars and combat widgets enabled by default");
@@ -53,3 +53,24 @@ Console.WriteLine("PASS: explicit transparency opt-outs and HUD font scale persi
 transparent.HudFontScale=float.PositiveInfinity;transparent.Normalize();if(transparent.HudFontScale!=1.05f)throw new Exception("HUD font bounds failed");
 transparent.ApplyModernPreset();if(!transparent.ForceTransparentPanels||!transparent.ForceTransparentNative||transparent.TextOnly)throw new Exception("Updated preset failed");
 Console.WriteLine("PASS: modern preset uses transparent backgrounds without dropping resource bars");
+
+var chat = new Configuration { ChatWidth = 1024, ChatHeight = 600, ChatSidebarWidth = 230, ChatNavigation = ChatNavigation.Right, ChatComposerHeight = 180, ChatHeaderFontScale = 1.3f, ChatBackground = ChatBackground.Custom, ChatBackgroundOpacity=.3f, NativeInteractions=false };
+var profile=ChatLayoutProfile.Capture(chat);chat.ChatWidth=400;chat.ChatSidebarWidth=80;chat.ChatNavigation=ChatNavigation.Hidden;profile.Values["NativeInteractions"]="true";profile.Values["ChatInputHeight"]="999";profile.Apply(chat);
+if(chat.ChatWidth!=1024||chat.ChatSidebarWidth!=230||chat.ChatNavigation!=ChatNavigation.Right||chat.ChatHeaderFontScale!=1.3f||chat.NativeInteractions||chat.ChatInputHeight!=100)throw new Exception("Chat layout profile failed");
+Console.WriteLine("PASS: profile restores all chat layout values and clamps input without changing interaction authorization");
+chat.ChatProfiles["宽屏"]=profile;var chatCopy=JsonConvert.DeserializeObject<Configuration>(JsonConvert.SerializeObject(chat))!;chatCopy.Normalize();
+if(chatCopy.ChatProfiles.Count!=1||chatCopy.ChatComposerHeight!=180||chatCopy.ChatBackground!=ChatBackground.Custom||chatCopy.ChatBackgroundOpacity!=.3f)throw new Exception("Chat profile persistence failed");
+Console.WriteLine("PASS: named layout profiles and independent background survive settings roundtrip");
+var legacyChat=JsonConvert.DeserializeObject<Configuration>("{\"Version\":5,\"ChatWidth\":900,\"Channels\":[{\"Name\":\"小队\",\"Types\":[14,14]},{\"Name\":\"私信\",\"Types\":[13]}]}")!;legacyChat.Normalize();
+if(legacyChat.ChatWidth!=900||legacyChat.Channels[0].Types.Count!=1||legacyChat.Channels[0].SendRoute!="party"||legacyChat.Channels[1].SendRoute!="tell")throw new Exception("Chat migration failed");
+Console.WriteLine("PASS: old dimensions and custom filters migrate with valid send routes");
+chat.ChatNavigation=(ChatNavigation)999;chat.ChatComposerHeight=float.NaN;chat.ChatInputHeight=-1;chat.ChatHistoryLimit=int.MaxValue;chat.Channels[1].Id=chat.Channels[0].Id;chat.Normalize();
+if(chat.ChatNavigation!=ChatNavigation.Left||chat.ChatComposerHeight!=120||chat.ChatInputHeight!=24||chat.ChatHistoryLimit!=10000||chat.Channels[0].Id==chat.Channels[1].Id)throw new Exception("Chat recovery failed");
+Console.WriteLine("PASS: invalid chat enums sizes capacity and duplicate IDs recover safely");
+
+var selectedChat=new Configuration();selectedChat.ChatActiveChannelId=selectedChat.Channels[1].Id;selectedChat.ChatSendRoute="party";selectedChat.Normalize();
+var selectedCopy=JsonConvert.DeserializeObject<Configuration>(JsonConvert.SerializeObject(selectedChat))!;selectedCopy.Normalize();
+if(selectedCopy.ChatActiveChannelId!=selectedChat.Channels[1].Id||selectedCopy.ChatSendRoute!="party")throw new Exception("Selection persistence failed");
+selectedCopy.ChatSendRoute="/teleport";selectedCopy.ChatActiveChannelId="missing";selectedCopy.Normalize();
+if(selectedCopy.ChatSendRoute!="say"||selectedCopy.ChatActiveChannelId!=selectedCopy.Channels[0].Id)throw new Exception("Selection recovery failed");
+Console.WriteLine("PASS: selected view and send route persist independently with invalid values recovered");

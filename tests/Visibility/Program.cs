@@ -82,3 +82,18 @@ outline.Change("Inventory",1,2,textOriginal,true);outline.Forget("Inventory");
 Check(outline.Change("Inventory",1,2,outlined,false)==null,"finalized text style identity is forgotten");
 var priorEdge=new TextAppearance(0xFF888888,0x48);outline.Change("Inventory",1,2,priorEdge,true);
 Check(outline.Change("Inventory",1,2,outlined,false)==priorEdge,"originally outlined text keeps its original outline on restoration");
+
+Check(ChatPolicy.TryBuild("party","","hello",out var chatEntry,out _)&&chatEntry=="/party hello","party messages use fixed native chat command");
+Check(ChatPolicy.TryBuild("tell","First Last@World","你好",out chatEntry,out _)&&chatEntry=="/tell First Last@World 你好","tell recipient with spaces and world is preserved");
+Check(!ChatPolicy.TryBuild("tell","Name@World\n/say","hello",out _,out _)&&!ChatPolicy.TryBuild("tell","Name@World /say","hello",out _,out _),"control and command injection in recipients is rejected");
+Check(!ChatPolicy.TryBuild("unknown","","hello",out _,out _)&&!ChatPolicy.TryBuild("say","","hello\n/world",out _,out _),"unknown routes and multiline input never reach game command processing");
+Check(ChatPolicy.TryBuild("say","","/teleport",out chatEntry,out _)&&chatEntry=="/say /teleport","slash content remains a chat message under fixed route");
+Check(!ChatPolicy.TryBuild("say","",new string('汉',150),out _,out _)&&ChatPolicy.TryBuild("say","",new string('汉',140),out _,out _),"full UTF-8 command length includes multibyte text and prefix");
+Check(ChatPolicy.Routes.Count==25&&ChatPolicy.TryBuild("cwl8","","hello",out chatEntry,out _)&&chatEntry=="/cwlinkshell8 hello","cross-world and normal linkshell routes are enumerated explicitly");
+Check(ChatPolicy.Matches(14,"Alice","hello",new ushort[]{14},"ALICE")&&!ChatPolicy.Matches(15,"Alice","hello",new ushort[]{14},""),"game channel filtering and case-insensitive search stay independent");
+var normalChat=ChatGeometry.Compute(600,400,160,120,1,true);
+Check(normalChat.Sidebar==160&&normalChat.Messages==434&&normalChat.Composer==120&&normalChat.Feed==264,"sidebar feed and composer dimensions account for splitters and spacing");
+var narrowChat=ChatGeometry.Compute(220,160,600,300,1,true);
+Check(narrowChat.Messages>0&&narrowChat.Feed>0&&narrowChat.Sidebar<220&&narrowChat.Composer<160,"narrow chat sizes cannot consume the message area");
+var tabsChat=ChatGeometry.Compute(600,400,160,120,1,false);
+Check(tabsChat.Sidebar==0&&tabsChat.Messages==600,"tabs or hidden navigation leave full message width");

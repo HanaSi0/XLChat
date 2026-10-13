@@ -1,5 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
+using System.Threading;
+using Dalamud.Game.Text.SeStringHandling.Payloads;
 using System.Linq;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
@@ -35,11 +38,15 @@ public sealed class Plugin : IDalamudPlugin
     internal static Configuration InstanceConfig { get; private set; } = null!;
     internal Configuration Config { get; private set; }
     internal readonly List<ChatLine> History = [];
+    private readonly ConcurrentQueue<ChatLine> pendingChat = new();
+    private long chatSequence;
     internal readonly Dictionary<string, int> Unread = [];
     internal string ActiveChannel;
     private readonly UserInterface ui;
     private bool wasLoggedIn;
     internal int HistoryRevision;
+    internal string LatestChatError="";
+    internal DateTime LatestChatErrorTime;
     private readonly OriginalChatVisibility originalChat = new();
     internal readonly GameUiController GameUi = new();
     internal readonly NativeUiStyling NativeStyle = new();
@@ -49,11 +56,12 @@ public sealed class Plugin : IDalamudPlugin
         Config = Interface.GetPluginConfig() as Configuration ?? new Configuration();
         Config.Normalize();
         InstanceConfig = Config;
-        ActiveChannel = Config.Channels[0].Id;
+        ActiveChannel = Config.ChatActiveChannelId;
         ui = new UserInterface(this);
         Commands.AddHandler("/xlinui", new CommandInfo(OnCommand)
         { HelpMessage = "XLinUI 设置。/xlinui off 关闭全部；/xlinui on 开启；/xlinui restore 恢复原版聊天。" });
-        Chat.ChatMessage += OnChat;
+        Chat.ChatMessageUnhandled += OnChat;
+        Chat.ChatMessageHandled += OnHandledChat;
         Framework.Update += OnUpdate;
         originalChat.Register();
         GameUi.Register();
@@ -76,6 +84,15 @@ public sealed class Plugin : IDalamudPlugin
 
     private void OnUpdate(IFramework framework)
     {
+        while(pendingChat.TryDequeue(out var line))
+        {
+            History.Add(line); HistoryRevision++;
+            if(line.Type==60){LatestChatError=line.Text;LatestChatErrorTime=DateTime.Now;}
+            foreach(var channel in Config.Channels.Where(c=>c.Types.Count==0||c.Types.Contains(line.Type)))
+                if(channel.Id!=ActiveChannel||!Config.Enabled||!Config.ShowChat||!ui.ChatVisible||!ui.ChatAtBottom)
+                    Unread[channel.Id]=Math.Min(9999,Unread.GetValueOrDefault(channel.Id)+1);
+        }
+        if(History.Count>Config.ChatHistoryLimit){History.RemoveRange(0,History.Count-Config.ChatHistoryLimit);HistoryRevision++;}
         GameUi.Update();
         NativeStyle.Update();
         originalChat.Update();
@@ -84,6 +101,9 @@ public sealed class Plugin : IDalamudPlugin
     private void OpenSettings() => ui.SettingsOpen = true;
     internal void Save()
     {
+        Config.Normalize();
+        if(Config.Channels.All(c=>c.Id!=ActiveChannel))ActiveChannel=Config.ChatActiveChannelId;
+        HistoryRevision++;
         Interface.SavePluginConfig(Config);
         if (!Config.Enabled || !Config.ShowChat || !Config.HideOriginalChat || !Config.ShowOriginalUi) originalChat.SetDesired(false);
         if (!Config.Enabled || Config.ShowOriginalUi) GameUi.SetHide(false);
@@ -94,6 +114,7 @@ public sealed class Plugin : IDalamudPlugin
         InstanceConfig = Config;
         ActiveChannel = Config.Channels[0].Id;
         Unread.Clear();
+        ui.ResetChatLayout();
         Save();
     }
 
@@ -102,7 +123,7 @@ public sealed class Plugin : IDalamudPlugin
         var loggedIn = Objects.LocalPlayer is not null;
         if (wasLoggedIn && !loggedIn)
         {
-            History.Clear(); Unread.Clear(); ui.ClearInput();
+            History.Clear(); pendingChat.Clear(); Unread.Clear(); LatestChatError="";ui.ClearInput();
         }
         wasLoggedIn = loggedIn;
         var drawn = false;
@@ -126,17 +147,17 @@ public sealed class Plugin : IDalamudPlugin
     }
 
     // The API-15 distribution's event signature is validated during compilation.
-    private void OnChat(IHandleableChatMessage message)
+    private void OnHandledChat(IChatMessage message){if(Config.ChatIncludeHandled)OnChat(message);}
+    private void OnChat(IChatMessage message)
     {
-        var kind = (ushort)message.LogKind;
-        HistoryRevision++;
-        // Copy strings immediately; do not retain event-owned objects or native pointers.
-        History.Add(new ChatLine(kind, message.Sender.TextValue, message.Message.TextValue, DateTime.Now));
-        if (History.Count > 1000) History.RemoveRange(0, History.Count - 1000);
-        foreach (var channel in Config.Channels.Where(c => c.Types.Count == 0 || c.Types.Contains(kind)))
-            if (channel.Id != ActiveChannel || !Config.Enabled || !Config.ShowChat || !ui.ChatVisible)
-                Unread[channel.Id] = Math.Min(999, Unread.GetValueOrDefault(channel.Id) + 1);
-        // Leave handled unchanged: original chat, links and other plugins continue to work.
+        if(Objects.LocalPlayer is null)return;
+        var timestamp=message.Timestamp>0?DateTimeOffset.FromUnixTimeSeconds(message.Timestamp).LocalDateTime:DateTime.Now;
+        var person=message.Sender.Payloads.OfType<PlayerPayload>().FirstOrDefault();
+        var maps=message.Message.Payloads.OfType<MapLinkPayload>().Select(m=>new ChatMapLink(m.TerritoryType.RowId,m.Map.RowId,m.RawX,m.RawY)).ToArray();
+        var items=message.Message.Payloads.OfType<ItemPayload>().Select(i=>new ChatItemLink(i.ItemId,i.IsHQ)).ToArray();
+        pendingChat.Enqueue(new ChatLine(Interlocked.Increment(ref chatSequence),(ushort)message.LogKind,message.Sender.TextValue,message.Message.TextValue,timestamp,person?.PlayerName??"",person?.World.RowId??0,maps,items));
+        while(pendingChat.Count>Config.ChatHistoryLimit)pendingChat.TryDequeue(out _);
+        // Copy owned strings/IDs only; leave the game's handled state unchanged.
     }
 
     public void Dispose()
@@ -145,13 +166,16 @@ public sealed class Plugin : IDalamudPlugin
         originalChat.Dispose();
         NativeStyle.Dispose();
         GameUi.Dispose();
-        Chat.ChatMessage -= OnChat;
+        Chat.ChatMessageUnhandled -= OnChat;
+        Chat.ChatMessageHandled -= OnHandledChat;
         Interface.UiBuilder.Draw -= Draw;
         Interface.UiBuilder.OpenConfigUi -= OpenSettings;
         Interface.UiBuilder.OpenMainUi -= OpenSettings;
         Commands.RemoveHandler("/xlinui");
-        History.Clear(); Unread.Clear();
+        History.Clear(); pendingChat.Clear(); Unread.Clear();
     }
 }
 
-internal sealed record ChatLine(ushort Type, string Sender, string Text, DateTime Time);
+internal sealed record ChatLine(long Id,ushort Type,string Sender,string Text,DateTime Time,string PlayerName,uint World,ChatMapLink[] Maps,ChatItemLink[] Items);
+internal sealed record ChatMapLink(uint Territory,uint Map,int X,int Y);
+internal sealed record ChatItemLink(uint Item,bool HighQuality);

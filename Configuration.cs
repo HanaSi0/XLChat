@@ -9,7 +9,45 @@ namespace XLinUI;
 [Serializable]
 public sealed class Configuration : IPluginConfiguration
 {
-    public int Version { get; set; } = 5;
+    public int Version { get; set; } = 6;
+    public ChatNavigation ChatNavigation { get; set; }
+    public ChatPresentation ChatPresentation { get; set; }
+    public ChatBackground ChatBackground { get; set; }
+    public float ChatBackgroundOpacity { get; set; } = .25f;
+    public float ChatComposerHeight { get; set; } = 120;
+    public float ChatSearchWidth { get; set; }
+    public float ChatSearchHeight { get; set; } = 28;
+    public float ChatHeaderFontScale { get; set; } = 1;
+    public float ChatTimestampFontScale { get; set; } = .85f;
+    public float ChatScrollbarWidth { get; set; } = 10;
+    public float ChatSendButtonHeight { get; set; } = 32;
+    public bool ChatShowSendButton { get; set; } = true;
+    public float ChatInputHeight { get; set; } = 32;
+    public float ChatSendButtonWidth { get; set; } = 60;
+    public float ChatSelectorWidth { get; set; } = 110;
+    public float ChatSidebarFontScale { get; set; } = 1;
+    public float ChatSidebarItemHeight { get; set; } = 30;
+    public float ChatMessageWidth { get; set; }
+    public float ChatLineSpacing { get; set; } = 3;
+    public float ChatGroupSpacing { get; set; } = 8;
+    public float ChatPadding { get; set; } = 8;
+    public bool ChatShowSearch { get; set; } = true;
+    public bool ChatIncludeHandled { get; set; }
+    public bool ChatShowTimestamp { get; set; } = true;
+    public bool ChatTimestampSeconds { get; set; }
+    public bool ChatShowChannelName { get; set; } = true;
+    public bool ChatGroupMessages { get; set; } = true;
+    public bool ChatFollow { get; set; } = true;
+    public string ChatActiveChannelId { get; set; } = "";
+    public string ChatSendRoute { get; set; } = "say";
+    public bool ChatAutoSendRoute { get; set; }
+    public bool ChatHasPosition { get; set; }
+    public Vector2 ChatPosition { get; set; } = new(30,150);
+    public int ChatHistoryLimit { get; set; } = 2000;
+    public int ChatPageSize { get; set; } = 400;
+    [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
+    public Dictionary<string,ChatLayoutProfile> ChatProfiles { get; set; } = [];
+
     public bool ForceTransparentPanels { get; set; } = true;
     public bool ForceTransparentNative { get; set; } = true;
     public bool TextOutline { get; set; } = true;
@@ -86,17 +124,44 @@ public sealed class Configuration : IPluginConfiguration
 
     public void Normalize()
     {
-        Version = 5;
+        var oldVersion=Version;
+        Version = 6;
+        ChatNavigation=Enum.IsDefined(ChatNavigation)?ChatNavigation:ChatNavigation.Left;
+        ChatPresentation=Enum.IsDefined(ChatPresentation)?ChatPresentation:ChatPresentation.Grouped;
+        ChatBackground=Enum.IsDefined(ChatBackground)?ChatBackground:ChatBackground.Global;
+        ChatBackgroundOpacity=Bound(ChatBackgroundOpacity,0,1,.25f);
+        ChatComposerHeight=Bound(ChatComposerHeight,60,300,120);
+        ChatSearchWidth=Bound(ChatSearchWidth,0,3000,0);
+        ChatSearchHeight=Bound(ChatSearchHeight,24,80,28);
+        ChatHeaderFontScale=Bound(ChatHeaderFontScale,.6f,2,1);
+        ChatTimestampFontScale=Bound(ChatTimestampFontScale,.6f,1.5f,.85f);
+        ChatScrollbarWidth=Bound(ChatScrollbarWidth,8,30,10);
+        ChatSendButtonHeight=Bound(ChatSendButtonHeight,24,100,32);
+        ChatInputHeight=Bound(ChatInputHeight,24,100,32);
+        ChatSendButtonWidth=Bound(ChatSendButtonWidth,40,180,60);
+        ChatSelectorWidth=Bound(ChatSelectorWidth,60,300,110);
+        ChatSidebarFontScale=Bound(ChatSidebarFontScale,.6f,2,1);
+        ChatSidebarItemHeight=Bound(ChatSidebarItemHeight,20,80,30);
+        ChatMessageWidth=Bound(ChatMessageWidth,0,3000,0);
+        ChatLineSpacing=Bound(ChatLineSpacing,0,30,3);
+        ChatGroupSpacing=Bound(ChatGroupSpacing,0,50,8);
+        ChatPadding=Bound(ChatPadding,0,30,8);
+        ChatPosition=new Vector2(Bound(ChatPosition.X,0,16384,30),Bound(ChatPosition.Y,0,16384,150));
+        ChatHistoryLimit=Math.Clamp(ChatHistoryLimit,200,10000);
+        ChatPageSize=Math.Clamp(ChatPageSize,100,2000);
+        ChatProfiles ??= [];
+        if(!ChatPolicy.KnownRoute(ChatSendRoute))ChatSendRoute="say";
+
         HudFontScale = float.IsFinite(HudFontScale) ? Math.Clamp(HudFontScale, .8f, 1.6f) : 1.05f;
         ExcludedNativeWindows ??= [];
         StatusIconSize = float.IsFinite(StatusIconSize) ? Math.Clamp(StatusIconSize, 20, 48) : 30;
         TopSections ??= DefaultTopSections();
         foreach (var key in TopLabels.Keys) if (!TopSections.ContainsKey(key)) TopSections[key] = true;
         Opacity = float.IsFinite(Opacity) ? Math.Clamp(Opacity, 0, 1) : .88f;
-        ChatWidth = float.IsFinite(ChatWidth) ? Math.Clamp(ChatWidth, 380, 1800) : 780;
-        ChatHeight = float.IsFinite(ChatHeight) ? Math.Clamp(ChatHeight, 240, 1200) : 430;
-        ChatSidebarWidth = float.IsFinite(ChatSidebarWidth) ? Math.Clamp(ChatSidebarWidth, 80, 250) : 145;
-        ChatFontScale = float.IsFinite(ChatFontScale) ? Math.Clamp(ChatFontScale, .7f, 1.6f) : 1;
+        ChatWidth = float.IsFinite(ChatWidth) ? Math.Clamp(ChatWidth, 320, 3840) : 780;
+        ChatHeight = float.IsFinite(ChatHeight) ? Math.Clamp(ChatHeight, 200, 2160) : 430;
+        ChatSidebarWidth = float.IsFinite(ChatSidebarWidth) ? Math.Clamp(ChatSidebarWidth, 40, 600) : 145;
+        ChatFontScale = float.IsFinite(ChatFontScale) ? Math.Clamp(ChatFontScale, .6f, 2.5f) : 1;
         SkillSize = float.IsFinite(SkillSize) ? Math.Clamp(SkillSize, 32, 72) : 44;
         Hotbar = Math.Clamp(Hotbar, 0, 9);
         Tint = new Vector3(Clamp(Tint.X), Clamp(Tint.Y), Clamp(Tint.Z));
@@ -104,14 +169,23 @@ public sealed class Configuration : IPluginConfiguration
         Channels ??= DefaultChannels();
         Channels.RemoveAll(c => c is null);
         if (Channels.Count == 0) Channels = DefaultChannels();
+        var ids=new HashSet<string>();
         foreach (var c in Channels)
         {
             c.Id = string.IsNullOrWhiteSpace(c.Id) ? Guid.NewGuid().ToString("N") : c.Id;
             c.Name = string.IsNullOrWhiteSpace(c.Name) ? "未命名" : c.Name;
             c.Types ??= [];
+            if(!ids.Add(c.Id)){c.Id=Guid.NewGuid().ToString("N");ids.Add(c.Id);}
+            c.Types=new List<ushort>(new HashSet<ushort>(c.Types));
+            if(oldVersion<6)c.SendRoute=ChatPolicy.DefaultRoute(c.Types);
+            if(!ChatPolicy.KnownRoute(c.SendRoute))c.SendRoute="say";
+            c.Color=new Vector3(Clamp(c.Color.X),Clamp(c.Color.Y),Clamp(c.Color.Z));
+
         }
+        if(!Channels.Exists(c=>c.Id==ChatActiveChannelId))ChatActiveChannelId=Channels[0].Id;
     }
 
+    private static float Bound(float value,float min,float max,float fallback)=>float.IsFinite(value)?Math.Clamp(value,min,max):fallback;
     private static float Clamp(float value) => float.IsFinite(value) ? Math.Clamp(value, 0, 1) : .5f;
     public static List<Shortcut> DefaultShortcuts() =>
     [
@@ -120,9 +194,9 @@ public sealed class Configuration : IPluginConfiguration
     ];
     public static List<Channel> DefaultChannels() =>
     [
-        new("全部", []), new("小队", [14, 15]),
-        new("社交", [24, 16, 17, 18, 19, 20, 21, 22, 23, 37, 101, 102, 103, 104, 105, 106, 107]),
-        new("私信", [12, 13]), new("系统", [2, 3, 56, 57, 58, 59, 60, 62, 69, 70]),
+        new("全部", []), new("小队", [14, 15]) {SendRoute="party"},
+        new("社交", [24, 16, 17, 18, 19, 20, 21, 22, 23, 37, 101, 102, 103, 104, 105, 106, 107]) {SendRoute="fc"},
+        new("私信", [12, 13]) {SendRoute="tell"}, new("系统", [2, 3, 56, 57, 58, 59, 60, 62, 69, 70]) {SendRoute="echo"},
     ];
 }
 
@@ -141,4 +215,8 @@ public sealed class Channel(string name, List<ushort> types)
     public string Name { get; set; } = name;
     // Empty means all received messages. These values are LogKind IDs, not send commands.
     public List<ushort> Types { get; set; } = types;
+    public string SendRoute { get; set; } = "say";
+    public bool CustomColor { get; set; }
+    public Vector3 Color { get; set; } = new(.39f,.77f,.73f);
+
 }
