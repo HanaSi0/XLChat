@@ -3,14 +3,12 @@ using XLChat.GameFunctions.Types;
 using XLChat.Util;
 using Dalamud.Bindings.ImGui;
 using Dalamud.Interface.Utility.Raii;
-using Dalamud.Game.ClientState.Objects.SubKinds;
 
 namespace XLChat.Ui.ChatLog;
 
 public partial class ChatLog
 {
-    private string privateName = "";
-    private uint privateWorld;
+    private (string Name, uint World, ulong ContentId)[] privateFriends = [];
 
     private void OpenPrivatePage(TellTarget target)
     {
@@ -36,35 +34,24 @@ public partial class ChatLog
         if (ImGuiUtil.IconButton(Dalamud.Interface.FontAwesomeIcon.Plus, tooltip: "新建私聊")) ImGui.OpenPopup("private-page-create");
         using var popup = ImRaii.Popup("private-page-create");
         if (!popup.Success) return;
-        ImGui.TextUnformatted("独立私聊页面");
-        if (Plugin.TargetManager.Target is IPlayerCharacter player && ImGui.Button("与当前选中玩家私聊"))
+        ImGui.TextUnformatted("选择好友开始私聊");
+        if (ImGui.IsWindowAppearing() || ImGui.Button("刷新好友列表"))
+            privateFriends = GameFunctions.GameFunctions.GetFriends()
+                .Select(friend => (friend.NameString, (uint)friend.HomeWorld, friend.ContentId)).ToArray();
+        if (privateFriends.Length == 0)
+            ImGui.TextWrapped("当前没有可读取的好友。请先打开游戏好友列表，再重新打开此菜单。");
+        using (var list = ImRaii.Child("private-friends", new System.Numerics.Vector2(280, 240) * Dalamud.Interface.Utility.ImGuiHelpers.GlobalScale))
         {
-            var target = TellTarget.Empty(); target.FromTarget(player);
-            OpenPrivatePage(target); ImGui.CloseCurrentPopup();
-        }
-        using (var friends = ImRaii.Combo("好友", "从游戏好友列表选择"))
-        {
-            if (friends.Success)
-                foreach (var friend in GameFunctions.GameFunctions.GetFriends())
-                    if (ImGui.Selectable($"{friend.NameString}##{friend.ContentId}"))
+            if (list.Success)
+                foreach (var friend in privateFriends)
+                {
+                    var server = Sheets.WorldSheet.TryGetRow(friend.World, out var world) ? world.Name.ToString() : friend.World.ToString();
+                    if (ImGui.Selectable($"{friend.Name}@{server}##{friend.ContentId}"))
                     {
-                        OpenPrivatePage(new TellTarget(friend.NameString, friend.HomeWorld, friend.ContentId, TellReason.Friend));
+                        OpenPrivatePage(new TellTarget(friend.Name, friend.World, friend.ContentId, TellReason.Friend));
                         ImGui.CloseCurrentPopup();
                     }
+                }
         }
-        ImGui.Separator();
-        ImGui.InputText("角色姓名", ref privateName, 64);
-        var preview = Sheets.WorldSheet.TryGetRow(privateWorld, out var world) ? world.Name.ToString() : "选择服务器";
-        using (var worlds = ImRaii.Combo("服务器", preview))
-            if (worlds.Success)
-                foreach (var entry in Sheets.WorldSheet)
-                    if (entry.IsPublic && ImGui.Selectable($"{entry.Name}##{entry.RowId}", privateWorld == entry.RowId)) privateWorld = entry.RowId;
-        using (ImRaii.Disabled(string.IsNullOrWhiteSpace(privateName) || privateWorld == 0 || privateName.Contains('@') || privateName.Contains('/')))
-            if (ImGui.Button("创建页面"))
-            {
-                OpenPrivatePage(new TellTarget(privateName.Trim(), privateWorld, 0, TellReason.Direct));
-                ImGui.CloseCurrentPopup();
-            }
-        ImGui.TextDisabled("固定收发对象；右键页面可重命名或删除。");
     }
 }

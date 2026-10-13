@@ -3,7 +3,7 @@
     "Author": "HanaSi0",
     "Name": "XLChat",
     "InternalName": "XLChat",
-    "AssemblyVersion": "1.0.1.0",
+    "AssemblyVersion": "1.0.2.0",
     "Description": "基于 ChatTwo 的聊天插件。\n原作者：Infi、Anna。",
     "ApplicableVersion": "any",
     "RepoUrl": "https://github.com/HanaSi0/XLChat",
@@ -17,11 +17,11 @@
     "LoadPriority": 0,
     "Punchline": "基于 ChatTwo 的聊天插件。",
     "AcceptsFeedback": true,
-    "DownloadLinkInstall": "https://github.com/HanaSi0/XLChat/releases/download/v1.0.1/XLChat.zip",
-    "DownloadLinkUpdate": "https://github.com/HanaSi0/XLChat/releases/download/v1.0.1/XLChat.zip",
-    "DownloadLinkTesting": "https://github.com/HanaSi0/XLChat/releases/download/v1.0.1/XLChat.zip",
+    "DownloadLinkInstall": "https://github.com/HanaSi0/XLChat/releases/download/v1.0.2/XLChat.zip",
+    "DownloadLinkUpdate": "https://github.com/HanaSi0/XLChat/releases/download/v1.0.2/XLChat.zip",
+    "DownloadLinkTesting": "https://github.com/HanaSi0/XLChat/releases/download/v1.0.2/XLChat.zip",
     "IsHide": false,
     "IsTestingExclusive": false,
-    "LastUpdate": 1791908311
+    "LastUpdate": 1791908788
   }
 ]
