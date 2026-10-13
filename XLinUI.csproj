@@ -1,6 +1,6 @@
 <Project Sdk="Dalamud.NET.Sdk/15.0.0">
   <PropertyGroup>
-    <Version>0.11.0</Version>
+    <Version>0.11.1</Version>
     <Author>HanaSi0</Author>
     <Name>XLinUI</Name>
     <Punchline>现代目标、读条、状态、聊天和统一窗口主题。</Punchline>

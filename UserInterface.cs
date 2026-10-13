@@ -53,7 +53,7 @@ internal sealed partial class UserInterface(Plugin plugin)
     internal void ClearInput()
     {
         draft = search = tellRecipient = ""; importedLayouts.Clear();
-        hotbarEditing=false;
+        CloseHotbarEditing();
         channelDrafts.Clear();filteredChat.Clear();chatCacheRevision=-1;ChatAtBottom=false;chatLabels=null;chatSubmitted=default;noviceJoinSubmitted=default;notice="";expandedChatRows=0;
         bagSlots.Clear(); bagCapacity = 0; bagAvailable = false; lastInventoryRead = default;
         acceptedQuests.Clear(); lastQuestRead = default;
@@ -63,6 +63,7 @@ internal sealed partial class UserInterface(Plugin plugin)
     }
     internal void Draw(bool loggedIn)
     {
+        if(hotbarEditing&&(!C.Enabled||!loggedIn||Plugin.GameGui.GameUiHidden))CloseHotbarEditing();
         ChatVisible = false;
         Ready = HudReady.None;
         Appearance.Update(C.Enabled && loggedIn && !Plugin.GameGui.GameUiHidden && (C.ShowChat || C.ShowTop || C.ShowStatus || C.ModernTarget || C.ModernCast || C.ModernStatuses));
@@ -279,7 +280,7 @@ internal sealed partial class UserInterface(Plugin plugin)
                 }
                 if(ImGui.BeginTabItem("热键栏"))
                 {
-                    try{DrawHotbarSettings(ref changed);}
+                    try{DrawHotbarSettings();}
                     finally{ImGui.EndTabItem();}
                 }
                 if (ImGui.BeginTabItem("顶部"))
@@ -307,7 +308,6 @@ internal sealed partial class UserInterface(Plugin plugin)
                 {
                     try
                     {
-                    changed |= Toggle("所有已显示热键栏采用直角边框", C.SquareHotbars, v => C.SquareHotbars = v);
                     changed |= Toggle("小地图方形外框", C.SquareMinimap, v => C.SquareMinimap = v);
                     ReadableText.TextWrapped("自动追踪 1–10 栏的原生槽位坐标与大小，无须选择单栏；保留原生冷却、拖放、快捷键与提示。小地图仍使用原生圆形内容，方框不改变地图裁切。");
                     changed |= Toggle("原生标准窗口统一色调与透明度（实验）", C.StyleNativeWindows, v => C.StyleNativeWindows = v);

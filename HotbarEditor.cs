@@ -20,9 +20,51 @@ internal sealed partial class UserInterface
         foreach(var bar in plugin.Hotbars.Bars)C.HotbarLayouts[bar.Name]=new(){Position=bar.Position,Scale=bar.Scale};
         C.NativeCombatWidgets=true;C.UseHotbarLayouts=C.HotbarLayouts.Count>0;plugin.Save();
     }
-    private void DrawHotbarSettings(ref bool changed)
+    private void CloseHotbarEditing()
     {
-        ReadableText.TextWrapped("保留原生 1–10 栏、技能拖放、快捷键、冷却、宏与提示。导入当前布局后逐栏调整位置和缩放；编辑模式通过栏外拖柄移动，按住 Shift 网格吸附，Ctrl 点拖柄可多选后一起移动。技能格始终交给游戏处理。");
+        var save=hotbarEditing||hotbarDragged;
+        hotbarEditing=false;hotbarDragged=false;selectedBars.Clear();dragOrigins.Clear();
+        if(save)plugin.Save();
+    }
+    private bool CanEditHotbars=>C.Enabled&&C.NativeInteractions&&Plugin.Objects.LocalPlayer is not null&&!Plugin.GameGui.GameUiHidden&&!plugin.Hotbars.NativeEditorActive&&plugin.Hotbars.Failure.Length==0;
+    private void DrawHotbarSettings()
+    {
+        ReadableText.TextWrapped("热键栏日常使用不显示拖柄与编辑选项。进入编辑模式后，在二级菜单调整所有热键栏。");
+        ImGui.BeginDisabled(!CanEditHotbars);
+        try
+        {
+            if(ReadableText.Button(hotbarEditing?"返回编辑菜单":"打开编辑模式"))
+            {
+                if(!C.UseHotbarLayouts)ImportHotbars();
+                if(C.UseHotbarLayouts){hotbarEditing=true;SettingsOpen=false;}
+            }
+        }
+        finally{ImGui.EndDisabled();}
+        if(!CanEditHotbars)ReadableText.TextWrapped(plugin.Hotbars.Failure.Length>0?plugin.Hotbars.Failure:"请登录游戏并启用插件与游戏交互；原版 HUD 编辑完成后再打开此模式。");
+    }
+    private void DrawHotbarEditMenu()
+    {
+        var open=hotbarEditing;var changed=false;
+        var visible=BeginPanel("热键栏编辑",ref open,new Vector2(610,650));
+        try
+        {
+            if(!visible)return;
+            if(ReadableText.Button("完成编辑")){CloseHotbarEditing();return;}
+            ImGui.SameLine();
+            if(ReadableText.Button("返回设置")){CloseHotbarEditing();SettingsOpen=true;return;}
+            ReadableText.TextWrapped("拖柄仅在此模式显示。Shift 网格吸附，Ctrl 点击多选；完成或关闭菜单后隐藏全部拖柄，保留当前布局。");
+            DrawHotbarEditOptions(ref changed);
+        }
+        finally
+        {
+            EndPanel();
+            if(changed)plugin.Save();
+            if(!open)CloseHotbarEditing();
+        }
+    }
+    private void DrawHotbarEditOptions(ref bool changed)
+    {
+        changed|=Toggle("所有已显示热键栏采用直角边框",C.SquareHotbars,v=>C.SquareHotbars=v);
         changed|=Toggle("使用 XLinUI 保存的热键栏位置／缩放",C.UseHotbarLayouts,v=>C.UseHotbarLayouts=v);
         ChatSlider("Shift 吸附网格（游戏画面像素）",C.HotbarGrid,4,64,v=>C.HotbarGrid=v,ref changed);
         changed|=Toggle("按 Shift 时显示参考网格",C.ShowHotbarGrid,v=>C.ShowHotbarGrid=v);
@@ -32,15 +74,11 @@ internal sealed partial class UserInterface
         try
         {
             if(ReadableText.Button("读取当前原版布局")){ImportHotbars();changed=true;}
-            ImGui.SameLine();
-            var editing=hotbarEditing;
-            if(ReadableText.Checkbox("编辑热键栏",ref editing))
-            {hotbarEditing=editing;if(editing&&!C.UseHotbarLayouts)ImportHotbars();else if(!editing)plugin.Save();}
         }
         finally{ImGui.EndDisabled();}
         if(ReadableText.Button("原版 HUD 布局／横竖排列"))
         {
-            hotbarEditing=false;C.UseHotbarLayouts=false;C.ShowOriginalUi=true;plugin.Hotbars.Release();plugin.Save();Native(GameBridge.OpenHudEditor);changed=true;
+            CloseHotbarEditing();C.UseHotbarLayouts=false;C.ShowOriginalUi=true;plugin.Hotbars.Release();plugin.Save();Native(GameBridge.OpenHudEditor);changed=true;
         }
         ImGui.SameLine();if(ReadableText.Button("打开技能与特性")){C.ShowOriginalUi=true;plugin.Save();Native(GameBridge.OpenSkillList);}
         ReadableText.TextWrapped("从原版“技能与特性”窗口直接拖入格子即可。若游戏已锁定技能格，可在下方解除原版热键栏锁定；不会自动解除锁定。12×1、6×2、4×3、3×4、2×6、1×12 排列、共享栏与键位继续使用原版设置。");
@@ -83,11 +121,14 @@ internal sealed partial class UserInterface
         }
         finally{ImGui.EndDisabled();}
         if(ReadableText.Button("全部恢复原版位置／缩放"))
-        {hotbarEditing=false;C.UseHotbarLayouts=false;C.HotbarLayouts.Clear();selectedBars.Clear();plugin.Hotbars.Release();changed=true;}
+        {CloseHotbarEditing();C.UseHotbarLayouts=false;C.HotbarLayouts.Clear();selectedBars.Clear();plugin.Hotbars.Release();changed=true;}
     }
     private void DrawHotbarEditor()
     {
-        if(!hotbarEditing||!C.UseHotbarLayouts||!C.NativeInteractions||plugin.Hotbars.NativeEditorActive)return;
+        if(!hotbarEditing)return;
+        if(!CanEditHotbars){CloseHotbarEditing();return;}
+        DrawHotbarEditMenu();
+        if(!hotbarEditing||!C.UseHotbarLayouts)return;
         var viewport=ImGuiHelpers.MainViewport;var io=ImGui.GetIO();var scale=ImGuiHelpers.GlobalScale;
         if(io.KeyShift&&C.ShowHotbarGrid)
         {
