@@ -300,7 +300,7 @@ public partial class ChatLog : Window, IChatWindow
 
         var currentTab = Plugin.CurrentTab; // local to avoid calling the getter repeatedly
         var lastActivityTime = Plugin.Config.Tabs
-            .Where(tab => !tab.PopOut && (tab.UnhideOnActivity || tab == currentTab))
+            .Where(tab => !tab.PopOut && ((tab.NotifyNewMessages && tab.UnhideOnActivity) || tab == currentTab))
             .Select(tab => tab.LastActivity)
             .Append( InputHandler.LastActivityTime)
             .Max();
@@ -873,17 +873,21 @@ public partial class ChatLog : Window, IChatWindow
             return;
 
         var previousTab = Plugin.CurrentTab;
-        for (var tabI = 0; tabI < Plugin.Config.Tabs.Count; tabI++)
+        foreach (var tabI in OrderedPageIndices(Plugin.Config.Tabs).ToArray())
         {
+            if (tabI >= Plugin.Config.Tabs.Count) break;
             var tab = Plugin.Config.Tabs[tabI];
             if (tab.PopOut)
                 continue;
 
-            var unread = tabI == Plugin.LastTab || tab.UnreadMode == UnreadMode.None || tab.Unread == 0 ? "" : $" ({tab.Unread})";
+            var unread = tabI == Plugin.LastTab || !tab.WantsAttention ? "" : $" ({tab.Unread})";
             var flags = ImGuiTabItemFlags.None;
             if (Plugin.WantedTab == tabI)
                 flags |= ImGuiTabItemFlags.SetSelected;
 
+            var flashing = tabI != Plugin.LastTab && tab.WantsAttention;
+            var pulseColor = new Vector4(.35f, .86f, .57f, (float)(.65 + .35 * (.5 + .5 * Math.Sin(ImGui.GetTime() * Math.PI * 2))));
+            using var alertColor = ImRaii.PushColor(ImGuiCol.Text, pulseColor, flashing);
             using var tabItem = ImRaii.TabItem($"{tab.Name}{unread}###log-tab-{tabI}", flags);
             DrawTabContextMenu(tab, tabI);
 
@@ -920,22 +924,38 @@ public partial class ChatLog : Window, IChatWindow
 
         var hasTabSwitched = false;
         var childHeight = GetRemainingHeightForMessageLog(true);
-        using (var child = ImRaii.Child("##xlchat-tab-sidebar", new Vector2(-1, childHeight)))
+        var belowUnread = 0;
+        var belowPage = -1;
+        var indicatorHeight = ImGui.GetFrameHeightWithSpacing();
+        using (var child = ImRaii.Child("##xlchat-tab-sidebar", new Vector2(-1, Math.Max(1, childHeight - indicatorHeight))))
         {
             if (child)
             {
                 ImGui.TextDisabled("聊天页面");
                 var previousTab = Plugin.CurrentTab;
                 using var rowStyle = ImRaii.PushStyle(ImGuiStyleVar.ItemSpacing, new Vector2(8, 7));
-                for (var tabI = 0; tabI < Plugin.Config.Tabs.Count; tabI++)
+                foreach (var tabI in OrderedPageIndices(Plugin.Config.Tabs).ToArray())
                 {
+                    if (tabI >= Plugin.Config.Tabs.Count) break;
                     var tab = Plugin.Config.Tabs[tabI];
                     if (tab.PopOut)
                         continue;
 
-                    var unread = tabI == Plugin.LastTab || tab.UnreadMode == UnreadMode.None || tab.Unread == 0 ? "" : $" ({tab.Unread})";
+                    var unread = tabI == Plugin.LastTab || !tab.WantsAttention ? "" : $" ({tab.Unread})";
                     var label = tab.Channel == InputChannel.Tell && tab.TellTarget.IsSet() ? $"私聊 · {tab.Name}" : tab.Name;
-                    var clicked = DrawSidebarPage(label, unread, tabI, Plugin.LastTab == tabI || Plugin.WantedTab == tabI);
+                    if (tab.IsPinned) label = "· " + label;
+                    var clicked = DrawSidebarPage(label, unread, tabI, Plugin.LastTab == tabI || Plugin.WantedTab == tabI, tab.WantsAttention);
+                    if (revealSidebarPage == tab.Identifier)
+                    {
+                        ImGui.SetScrollHereY(.5f);
+                        revealSidebarPage = null;
+                    }
+                    var viewBottom = ImGui.GetWindowPos().Y + ImGui.GetWindowSize().Y - ImGui.GetStyle().WindowPadding.Y;
+                    if (tabI != Plugin.LastTab && tab.WantsAttention && ImGui.GetItemRectMax().Y > viewBottom)
+                    {
+                        belowUnread++;
+                        if (belowPage < 0) belowPage = tabI;
+                    }
                     DrawTabContextMenu(tab, tabI);
 
                     if (!clicked && Plugin.WantedTab != tabI)
@@ -949,6 +969,20 @@ public partial class ChatLog : Window, IChatWindow
                 }
             }
         }
+
+        if (belowUnread > 0)
+        {
+            if (ImGui.Button($"↓ 新消息 · {belowUnread}###below-unread", new Vector2(-1, 0)) && belowPage >= 0 && belowPage < Plugin.Config.Tabs.Count)
+            {
+                revealSidebarPage = Plugin.Config.Tabs[belowPage].Identifier;
+                var previous = Plugin.CurrentTab;
+                hasTabSwitched = Plugin.LastTab != belowPage;
+                Plugin.LastTab = belowPage;
+                currentTab = belowPage;
+                if (hasTabSwitched) TabSwitched(Plugin.Config.Tabs[belowPage], previous);
+            }
+        }
+        else ImGui.Dummy(new Vector2(0, ImGui.GetFrameHeight()));
 
         ImGui.TableNextColumn();
         ImGui.InvisibleButton("sidebar-resize", new Vector2(6 * scale, Math.Max(1, childHeight)));
@@ -985,15 +1019,20 @@ public partial class ChatLog : Window, IChatWindow
 
         var anyChanged = false;
         var tabs = Plugin.Config.Tabs;
+        if (ImGui.Checkbox("置顶", ref tab.IsPinned)) anyChanged = true;
+        DrawCurrentPageOptions(tab, ref anyChanged);
+        ImGui.Separator();
 
         ImGui.SetNextItemWidth(250f * ImGuiHelpers.GlobalScale);
         if (ImGui.InputText("##tab-name", ref tab.Name, 128))
             anyChanged = true;
 
-        if (ImGuiUtil.IconButton(FontAwesomeIcon.TrashAlt, tooltip: Language.ChatLog_Tabs_Delete))
+        if (tabs.Count > 1 && ImGuiUtil.IconButton(FontAwesomeIcon.TrashAlt, tooltip: Language.ChatLog_Tabs_Delete))
         {
             tabs.RemoveAt(i);
-            Plugin.WantedTab = 0;
+            if (i < Plugin.LastTab) Plugin.LastTab--;
+            else if (i == Plugin.LastTab) Plugin.LastTab = Math.Min(i, tabs.Count - 1);
+            Plugin.WantedTab = Plugin.LastTab;
 
             anyChanged = true;
         }

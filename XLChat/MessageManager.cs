@@ -285,7 +285,7 @@ public class MessageManager : IAsyncDisposable
         var currentMatches = Plugin.CurrentTab.Matches(message);
         foreach (var tab in Plugin.Config.Tabs)
         {
-            var unread = !(tab.UnreadMode == UnreadMode.Unseen && Plugin.CurrentTab != tab && currentMatches);
+            var unread = tab.NotifyNewMessages || !(tab.UnreadMode == UnreadMode.Unseen && Plugin.CurrentTab != tab && currentMatches);
 
             if (tab.Matches(message))
             {

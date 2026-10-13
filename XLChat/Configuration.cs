@@ -257,6 +257,10 @@ public class Tab
     public HashSet<Guid> ExtraChatChannels = [];
 
     public UnreadMode UnreadMode = UnreadMode.Unseen;
+    public bool NotifyNewMessages = true;
+    public bool IsPinned;
+    [Newtonsoft.Json.JsonIgnore] public bool WantsAttention => NotifyNewMessages && UnreadMode != UnreadMode.None && Unread > 0;
+
     public bool UnhideOnActivity;
     public bool DisplayTimestamp = true;
     public InputChannel? Channel;
@@ -326,6 +330,8 @@ public class Tab
             ExtraChatAll = ExtraChatAll,
             ExtraChatChannels = ExtraChatChannels.ToHashSet(),
             UnreadMode = UnreadMode,
+            NotifyNewMessages = NotifyNewMessages,
+            IsPinned = IsPinned,
             UnhideOnActivity = UnhideOnActivity,
             Unread = Unread,
             LastActivity = LastActivity,

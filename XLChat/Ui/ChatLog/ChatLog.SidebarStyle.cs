@@ -10,7 +10,7 @@ public partial class ChatLog
     public static float ClampSidebarWidth(float requested, float available)
         => Math.Clamp(float.IsFinite(requested) ? requested : 160, 96, Math.Max(96, available - 200));
 
-    private static bool DrawSidebarPage(string label, string unread, int index, bool selected)
+    private static bool DrawSidebarPage(string label, string unread, int index, bool selected, bool attention)
     {
         var scale = ImGuiHelpers.GlobalScale;
         var width = Math.Max(1, ImGui.GetContentRegionAvail().X);
@@ -23,6 +23,11 @@ public partial class ChatLog
         var clicked = ImGui.InvisibleButton($"log-tab-{index}", new Vector2(width, height));
         var hovered = ImGui.IsItemHovered();
         var draw = ImGui.GetWindowDrawList();
+        if (attention && !selected)
+        {
+            var pulse=(float)(.14 + .12 * (.5 + .5 * Math.Sin(ImGui.GetTime()*Math.PI*2)));
+            draw.AddRectFilled(start,start+new Vector2(width,height),ImGui.ColorConvertFloat4ToU32(new Vector4(.25f,.78f,.48f,pulse)),8*scale);
+        }
         if (selected || hovered)
         {
             var fill = selected ? new Vector4(.14f,.48f,.32f,.25f) : new Vector4(.5f,.6f,.65f,.10f);

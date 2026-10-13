@@ -69,3 +69,16 @@ if(style.IncomingBubble.X!=0||style.IncomingBubble.Y!=1||style.IncomingBubble.Z!
 Console.WriteLine("PASS: private recipient isolation and bubble settings");
 if(XLChat.Ui.ChatLog.ChatLog.ClampSidebarWidth(0,500)!=96 || XLChat.Ui.ChatLog.ChatLog.ClampSidebarWidth(900,500)!=300 || XLChat.Ui.ChatLog.ChatLog.ClampSidebarWidth(float.NaN,500)!=160 || XLChat.Ui.ChatLog.ChatLog.ClampSidebarWidth(50,100)!=96)throw new Exception("Sidebar minimum width or conversation reservation failed");
 Console.WriteLine("PASS: sidebar minimum width, invalid settings and conversation space reservation");
+var noticeTab=new Tab{Unread=3,NotifyNewMessages=true,IsPinned=true};
+if(!noticeTab.WantsAttention)throw new Exception("New messages should attract attention");
+noticeTab.NotifyNewMessages=false;
+if(noticeTab.WantsAttention)throw new Exception("Muted pages must not attract attention");
+var clonedNotice=noticeTab.Clone();
+if(clonedNotice.NotifyNewMessages||!clonedNotice.IsPinned)throw new Exception("Page options missing from clone");
+var persistedNotice=JsonConvert.DeserializeObject<Tab>(JsonConvert.SerializeObject(noticeTab));
+if(persistedNotice.NotifyNewMessages||!persistedNotice.IsPinned)throw new Exception("Page options missing from saved settings");
+var ordered=XLChat.Ui.ChatLog.ChatLog.OrderedPageIndices(new[]{new Tab{Name="A"},new Tab{Name="B",IsPinned=true},new Tab{Name="C"},new Tab{Name="D",IsPinned=true}}).ToArray();
+if(!ordered.SequenceEqual(new[]{1,3,0,2}))throw new Exception("Pinning must preserve identity and order within each group");
+noticeTab.NotifyNewMessages=true;noticeTab.Unread=0;
+if(noticeTab.WantsAttention)throw new Exception("Read pages must not flash");
+Console.WriteLine("PASS: muted/read page attention, per-page settings persistence and stable pinned ordering");

@@ -142,6 +142,13 @@ public sealed class Tabs : ISettingsTab
                 }
             }
 
+            if (ImGui.Checkbox("新消息提醒（关闭即静默）", ref tab.NotifyNewMessages))
+            {
+                tab.Unread = 0;
+                if (tab.NotifyNewMessages && tab.UnreadMode == UnreadMode.None) tab.UnreadMode = UnreadMode.All;
+            }
+            ImGui.Checkbox("置顶标签页", ref tab.IsPinned);
+
             if (Mutable.HideWhenInactive)
                 ImGui.Checkbox(Language.Options_Tabs_InactivityBehaviour, ref tab.UnhideOnActivity);
 
