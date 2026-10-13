@@ -76,7 +76,7 @@ if(selectedCopy.ChatSendRoute!="say"||selectedCopy.ChatActiveChannelId!=selected
 Console.WriteLine("PASS: selected view and send route persist independently with invalid values recovered");
 
 var appearanceConfig=new Configuration{Material=99,FontSize=float.PositiveInfinity,ImageBlur=-10,BackgroundOpacity=2,FontFace=-3};appearanceConfig.Normalize();
-if(appearanceConfig.Material!=1||appearanceConfig.FontSize!=18||appearanceConfig.ImageBlur!=0||appearanceConfig.BackgroundOpacity!=1||appearanceConfig.FontFace!=0)throw new Exception("Appearance normalization failed");
+if(appearanceConfig.Material!=1||appearanceConfig.FontSize!=18||appearanceConfig.ImageBlur!=1||appearanceConfig.BackgroundOpacity!=1||appearanceConfig.FontFace!=0)throw new Exception("Appearance normalization failed");
 Console.WriteLine("PASS: appearance values normalize safely");
 
 var assetConfig=new Configuration{Material=2,BackgroundFile="C:/素材/背景.png",FontFile="C:/字体/中文.ttf",UseCustomFont=true,FontSize=24,BackgroundColor=new(.1f,.2f,.3f)};
@@ -121,7 +121,7 @@ if(JsonConvert.SerializeObject(new Configuration()).Contains("LiveGlass"))throw 
 Console.WriteLine("PASS: continuous glass sampling defaults off");
 
 var upgrade=new Configuration{Version=6,ForceTransparentPanels=true,ForceTransparentNative=true,TextOnly=true,Opacity=0};upgrade.Normalize();
-if(upgrade.Version!=8||upgrade.ForceTransparentPanels||upgrade.ForceTransparentNative||upgrade.TextOnly||upgrade.Opacity!=1||upgrade.ChatBackground!=ChatBackground.Global)throw new Exception("Opaque upgrade failed");
+if(upgrade.Version!=9||upgrade.ForceTransparentPanels||upgrade.ForceTransparentNative||upgrade.TextOnly||upgrade.Opacity!=1||upgrade.ChatBackground!=ChatBackground.Global)throw new Exception("Opaque upgrade failed");
 Console.WriteLine("PASS: legacy background migration applies opaque startup without leaving hidden-background flags");
 var customAlpha=new Configuration{OpaqueOnEnable=false,Opacity=.2f,BackgroundOpacity=.3f,ChatBackground=ChatBackground.Custom,ChatBackgroundOpacity=.4f};customAlpha.Normalize();
 var alphaCopy=JsonConvert.DeserializeObject<Configuration>(JsonConvert.SerializeObject(customAlpha))!;alphaCopy.Normalize();
@@ -163,3 +163,32 @@ var smartCopy=JsonConvert.DeserializeObject<Configuration>(JsonConvert.Serialize
 if(smartCopy.ChatShowFilterSummary||smartCopy.ChatShowUnreadBadges||ChatFilter.Accepts(smartCopy.Channels[0],41,0,0))throw new Exception("Smart filter preferences failed roundtrip");
 if(ChatChannelPolicy.Badge(102)!="99+"||ChatChannelPolicy.Badge(-1)!="0"||ChatChannelPolicy.Badge(3)!="3")throw new Exception("Unread badge bounds incorrect");
 Console.WriteLine("PASS: smart presets, all-to-custom editing, future channel compatibility, last unchecked behavior, relation preservation, exclusion overrides and badge/config persistence");
+
+var backgroundSamples=new string[]{"iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR4nGOM6tn3n4GBgYGJAQoAKAQCp8S7DhAAAAAASUVORK5CYII=","/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAACAAIDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwB9FFFe6eKf/9k=","Qk1GAAAAAAAAADYAAAAoAAAAAgAAAAIAAAABACAAAAAAABAAAADEDgAAxA4AAAAAAAAAAAAAvoxa/76MWv++jFr/voxa/w=="};
+foreach(var sample in backgroundSamples)
+{
+    var pixels=CpuBackground.Decode(Convert.FromBase64String(sample),System.Threading.CancellationToken.None);
+    if(pixels.Width!=2||pixels.Height!=2||pixels.Rgba.Length!=16)throw new Exception("CPU image decoder dimensions failed");
+}
+var tall=CpuBackground.Resize(new byte[4096*4],1,4096);
+if(tall.Width!=1||tall.Height!=1024||tall.Rgba.Length!=4096)throw new Exception("Tall image aspect/size limit failed");
+var oversized=Convert.FromBase64String(backgroundSamples[2]);
+BitConverter.GetBytes(500000).CopyTo(oversized,18);BitConverter.GetBytes(500000).CopyTo(oversized,22);
+var refused=false;try{CpuBackground.Decode(oversized,System.Threading.CancellationToken.None);}catch(System.IO.IOException){refused=true;}
+if(!refused)throw new Exception("Oversized bitmap decoded before dimension validation");
+var temporary=System.IO.Path.GetTempFileName();
+try
+{
+    System.IO.File.WriteAllBytes(temporary,Convert.FromBase64String(backgroundSamples[0]));
+    var processor=new CpuBackground();var first=processor.Load(temporary,12,System.Threading.CancellationToken.None);
+    System.IO.File.Delete(temporary);
+    var cached=processor.Load(temporary,20,System.Threading.CancellationToken.None);
+    if(first.Rgba.Length!=cached.Rgba.Length||ReferenceEquals(first.Rgba,cached.Rgba))throw new Exception("Cached source pixel ownership failed");
+    using var cancellation=new System.Threading.CancellationTokenSource();cancellation.Cancel();
+    var cancelled=false;try{processor.Load(temporary,12,cancellation.Token);}catch(OperationCanceledException){cancelled=true;}
+    if(!cancelled)throw new Exception("Background unload cancellation ignored");
+}
+finally{System.IO.File.Delete(temporary);}
+var oldUnblurred=new Configuration{Version=8,Material=2,ImageBlur=0};oldUnblurred.Normalize();
+if(oldUnblurred.Version!=9||oldUnblurred.ImageBlur!=12)throw new Exception("Legacy unblurred image migration failed");
+Console.WriteLine("PASS: CPU PNG/JPEG/BMP decoding, aspect/size limits before decode, cached source reuse, cancellation and blur migration");

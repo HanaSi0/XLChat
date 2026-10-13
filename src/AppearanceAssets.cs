@@ -18,6 +18,8 @@ internal sealed class AppearanceAssets : IDisposable
     private IFontAtlas? atlas;private IFontHandle? font;
     private IDalamudTextureWrap? image;
     private Task<IDalamudTextureWrap>? imageTask;
+    private readonly CpuBackground background=new();
+    private string imageTaskKey="";
     private string imageKey="",fontKey="";
     private string pendingFont="",pendingImage="";private DateTime fontChanged,imageChanged;
     internal string Status {get;private set;}="素材仅保存在本机，不上传。";
@@ -35,21 +37,21 @@ internal sealed class AppearanceAssets : IDisposable
             var directory=Path.Combine(Plugin.Interface.GetPluginConfigDirectory(),"Assets");Directory.CreateDirectory(directory);
             var target=Path.Combine(directory,Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes))+ext);
             File.WriteAllBytes(target,bytes);
-            if(isFont){config.FontFile=target;config.UseCustomFont=true;}else{config.BackgroundFile=target;config.Material=2;}
+            if(isFont){config.FontFile=target;config.UseCustomFont=true;}else{config.BackgroundFile=target;config.Material=2;imageKey="";}
             Plugin.Interface.SavePluginConfig(config);Status="已导入 "+info.Name;
         }
         catch(Exception ex){Status="导入失败："+ex.Message;}
     });
     internal void Update(bool active)
     {
-        Complete(ref imageTask,ref image);
-        var nextKey=config.BackgroundFile+"|"+config.ImageBlur;
+        var nextKey=config.BackgroundFile+"|"+(int)config.ImageBlur;
+        CompleteImage(nextKey);
         if(pendingImage!=nextKey){pendingImage=nextKey;imageChanged=DateTime.UtcNow;}
         if(imageTask is null&&imageKey!=nextKey&&(DateTime.UtcNow-imageChanged).TotalMilliseconds>350)
         {
             imageKey=nextKey;
             if(string.IsNullOrEmpty(config.BackgroundFile)){image?.Dispose();image=null;}
-            else {image?.Dispose();image=null;imageTask=LoadImage(config.BackgroundFile,(int)config.ImageBlur,cancellation.Token);}
+            else {imageTaskKey=nextKey;imageTask=LoadImage(config.BackgroundFile,(int)config.ImageBlur,cancellation.Token);}
         }
         var nextFont=config.UseCustomFont?config.FontFile+"|"+config.FontSize+"|"+config.FontFace:"";
         if(pendingFont!=nextFont){pendingFont=nextFont;fontChanged=DateTime.UtcNow;}
@@ -75,12 +77,21 @@ internal sealed class AppearanceAssets : IDisposable
     }
     internal IDisposable? PushFont()=>font?.Push();
     internal void DrawDialog()=>dialog.Draw();
-    private void Complete(ref Task<IDalamudTextureWrap>? task,ref IDalamudTextureWrap? current)
+    private void CompleteImage(string requestedKey)
     {
-        if(task is null||!task.IsCompleted)return;
-        if(task.IsCompletedSuccessfully){current?.Dispose();current=task.Result;}
-        else if(task.IsFaulted)Status="背景暂不可用，使用颜色背景："+task.Exception?.GetBaseException().Message;
-        task=null;
+        if(imageTask is null||!imageTask.IsCompleted)return;
+        if(imageTask.IsCompletedSuccessfully)
+        {
+            var result=imageTask.Result;
+            if(imageTaskKey==requestedKey){var previous=image;image=result;previous?.Dispose();Status="模糊背景已就绪（本机图片，不采样游戏）。";}
+            else result.Dispose();
+        }
+        else if(imageTask.IsFaulted)
+        {
+            var error=imageTask.Exception?.GetBaseException().Message;
+            if(imageTaskKey==requestedKey){image?.Dispose();image=null;Status="背景加载失败，使用颜色背景："+error;}
+        }
+        imageTask=null;
     }
     private static void ValidateFont(byte[] bytes)
     {
@@ -92,19 +103,11 @@ internal sealed class AppearanceAssets : IDisposable
     {
         var info=new FileInfo(path);if(info.Length==0||info.Length>32*1024*1024)throw new IOException("文件大小超出限制");return File.ReadAllBytes(path);
     }
-    private static async Task<IDalamudTextureWrap> LoadImage(string path,int blur,CancellationToken ct)
+    private async Task<IDalamudTextureWrap> LoadImage(string path,int blur,CancellationToken ct)
     {
-        var bytes=await Task.Run(()=>ReadLimited(path),ct);
-        var texture=await Plugin.Textures.CreateFromImageAsync(bytes,"XLinUI 背景",ct);
-        if(blur==0)return texture;
-        using(texture)return await BlurTexture(texture,Math.Min(1024,texture.Width),Math.Max(1,(int)(texture.Height*(double)Math.Min(1024,texture.Width)/texture.Width)),blur,false,ct);
-    }
-    private static async Task<IDalamudTextureWrap> BlurTexture(IDalamudTextureWrap source,int width,int height,int radius,bool opaque,CancellationToken ct)
-    {
-        height=Math.Min(2048,height);
-        var (spec,raw)=await Plugin.Readback.GetRawImageAsync(source,new TextureModificationArgs{NewWidth=width,NewHeight=height,DxgiFormat=28,MakeOpaque=opaque},true,ct);
-        var result=await Task.Run(()=>ImageEffects.Blur(ImageEffects.Pack(raw,spec.Width,spec.Height,spec.Pitch),spec.Width,spec.Height,radius),ct);
-        return await Plugin.Textures.CreateFromRawAsync(RawImageSpecification.Rgba32(spec.Width,spec.Height),result,"XLinUI 模糊背景",ct);
+        var pixels=await Task.Run(()=>background.Load(path,blur,ct),ct);
+        ct.ThrowIfCancellationRequested();
+        return await Plugin.Textures.CreateFromRawAsync(RawImageSpecification.Rgba32(pixels.Width,pixels.Height),pixels.Rgba,"XLinUI 本机模糊背景",ct);
     }
     internal void DrawBackground()
     {

@@ -8,7 +8,7 @@
 
 ## 安装
 
-适用于 **国服 soil XIVLauncher / Dalamud API 15**，当前版本 **0.3.4**。
+适用于 **国服 soil XIVLauncher / Dalamud API 15**，当前版本 **0.3.5**。
 
 1. 打开 Dalamud 设置 → 实验性 → 自定义插件仓库。
 2. 添加下面的地址，保存并刷新插件列表。
@@ -18,7 +18,7 @@
 https://raw.githubusercontent.com/HanaSi0/XLinUI/main/pluginmaster.json
 ```
 
-[手动下载](https://github.com/HanaSi0/XLinUI/releases/download/v0.3.4/XLinUI.zip) · [版本页面](https://github.com/HanaSi0/XLinUI/releases/tag/v0.3.4)
+[手动下载](https://github.com/HanaSi0/XLinUI/releases/download/v0.3.5/XLinUI.zip) · [版本页面](https://github.com/HanaSi0/XLinUI/releases/tag/v0.3.5)
 
 以前用本地开发路径加载过旧版的亲友，先停用旧插件、移除旧 DLL 路径，再安装这个版本。旧高版本不会自动降级。已经通过仓库安装的亲友，刷新列表后更新即可。
 
@@ -43,11 +43,12 @@ https://raw.githubusercontent.com/HanaSi0/XLinUI/main/pluginmaster.json
 
 ## 本次更新
 
-- 频道接收筛选按附近、小队、私信、部队、通讯贝、系统和战斗等分组，可批量勾选、按名称或编号搜索。
-- 快捷方案包括全部消息、玩家交流、小队与团队、私信、部队与通讯贝、系统与活动；应用会替换接收筛选及默认发送频道。
-- 可单独屏蔽战斗刷屏，新增空分类不会接收全部消息。修改导入分类时保留未删除频道的 Chat Two 关系过滤。
-- 聊天侧栏使用选中色条和独立未读徽标，长名称自动省略；顶部标签支持滚动。可开关筛选摘要与未读徽标。
+图片背景改为纯 CPU 解码、缩小及模糊，只上传处理后的成品；不再创建原图纹理后读回 GPU，不采样游戏画面。设置只保留图片导入、模糊强度、颜色和透明度。旧未模糊图片自动采用默认模糊强度。
 
-继续保留本机图片模糊背景和 Chat Two 配置导入；默认开启时背景不透明。参考 [Chat Two 公开源码](https://github.com/Infiziert90/ChatTwo) 的配置结构，导入不修改原插件。
+同一图片解码后缓存，调整模糊强度不重复读取文件；拖动强度停止后再生成。更换背景成功前保留旧背景，过期任务结果丢弃，失败时采用颜色背景。支持 PNG/JPG/BMP，文件不超过 32 MB、图片不超过 1600 万像素；背景保持比例缩小到最长边 1024 像素。
 
-原生直接发送和共享纹理改写继续暂停。聊天 Enter 复制指令后粘贴到原版发送。
+手动安装须解压并替换 ZIP 内的全部文件，包括 StbImageSharp.dll，不能只替换 XLinUI.dll。在线仓库更新会自动安装依赖。
+
+聊天筛选与美化继续保留。原生直接发送和共享纹理改写继续暂停；聊天 Enter 复制指令后粘贴到原版发送。
+
+CPU 图片解码使用 [StbImageSharp 2.30.16](https://www.nuget.org/packages/StbImageSharp/2.30.16)，按其 Unlicense 授权使用。

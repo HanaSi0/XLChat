@@ -9,14 +9,14 @@ namespace XLinUI;
 [Serializable]
 public sealed class Configuration : IPluginConfiguration
 {
-    public int Version { get; set; } = 8;
+    public int Version { get; set; } = 9;
     public int Material { get; set; } = 1; // 0 legacy panel, 1 solid, 2 local image
     public string BackgroundFile { get; set; } = "";
     public Vector3 BackgroundColor { get; set; } = new(.035f,.045f,.065f);
     public Vector3 ForegroundColor { get; set; } = new(.95f,.97f,1);
     public float BackgroundOpacity { get; set; } = 1;
     public float BackgroundTintOpacity { get; set; } = .35f;
-    public float ImageBlur { get; set; }
+    public float ImageBlur { get; set; } = 12; // CPU-only local background blur
     public int ImageFit { get; set; }
     public bool FlatIcons { get; set; } = true;
     public bool FlatNativeIcons { get; set; } = true;
@@ -172,11 +172,11 @@ public sealed class Configuration : IPluginConfiguration
         BackgroundOpacity=Clamp(BackgroundOpacity);BackgroundTintOpacity=Clamp(BackgroundTintOpacity);
         BackgroundColor=new(Clamp(BackgroundColor.X),Clamp(BackgroundColor.Y),Clamp(BackgroundColor.Z));
         ForegroundColor=new(Clamp(ForegroundColor.X),Clamp(ForegroundColor.Y),Clamp(ForegroundColor.Z));
-        ImageBlur=Bound(ImageBlur,0,32,0);
+        ImageBlur=Version<9&&ImageBlur==0?12:Bound(ImageBlur,1,32,12);
         FontSize=Bound(FontSize,12,36,18);FontFace=Math.Clamp(FontFace,0,20);
 
         var oldVersion=Version;
-        Version = 8;
+        Version = 9;
         if(oldVersion<7&&OpaqueOnEnable)ApplyOpaqueBackground();
         ChatNavigation=Enum.IsDefined(ChatNavigation)?ChatNavigation:ChatNavigation.Left;
         ChatPresentation=Enum.IsDefined(ChatPresentation)?ChatPresentation:ChatPresentation.Grouped;

@@ -32,7 +32,6 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static ITargetManager Targets { get; private set; } = null!;
     [PluginService] internal static IPartyList Party { get; private set; } = null!;
     [PluginService] internal static IObjectTable Objects { get; private set; } = null!;
-    [PluginService] internal static ITextureReadbackProvider Readback { get; private set; } = null!;
     [PluginService] internal static ITextureProvider Textures { get; private set; } = null!;
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
 
