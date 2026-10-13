@@ -6,6 +6,10 @@ Chat Two 原作者：**Infi、Anna**。原项目：[Infiziert90/ChatTwo](https:/
 
 当前版本 **0.1.0**，构建目标为国服 **soil XIVLauncher / Dalamud API 15**。实际国服兼容性以游戏内运行结果为准。
 
+## Thanks to
+
+The original dev Anna~
+
 ## 安装
 
 [下载 XLChat.zip](https://github.com/HanaSi0/XLChat/releases/download/v0.1.0/XLChat.zip)，完整解压安装包，保留主 DLL 和全部依赖文件。
