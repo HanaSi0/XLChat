@@ -193,3 +193,6 @@ var glyphAtlas=ButtonAtlasPolicy.Redraw(glyphSource,6,6,new[]{new ButtonRegion(1
 Check(glyphAtlas[(2*6+2)*4]==200&&glyphAtlas[(2*6+2)*4+3]==255,"menu glyphs are redrawn without replacing their shape with a solid button");
 var overlap=ButtonAtlasPolicy.Redraw(glyphSource,6,6,new[]{new ButtonRegion(1,1,4,4),new ButtonRegion(1,1,4,4,false,true)},Vector3.One);
 Check(overlap[(2*6+2)*4]<100,"procedural surfaces take precedence over duplicate glyph slices");
+
+Check(ChannelEditPolicy.Header("频道").Split("###")[1]==ChannelEditPolicy.Header("频道A").Split("###")[1],"channel rename retains the tree and input identity");
+Check(ChannelEditPolicy.CommitName("  新名字  ","频道")=="新名字"&&ChannelEditPolicy.CommitName("","频道")=="频道","channel name editing accepts complete names and preserves prior name on empty commit");

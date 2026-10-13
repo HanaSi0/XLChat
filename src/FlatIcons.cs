@@ -20,7 +20,7 @@ internal sealed class FlatIcons : IDisposable
     internal int PendingCount=>queue.Count+(pending is null?0:1);
     internal IDalamudTextureWrap? Get(uint id)
     {
-        if(id==0)return null;
+        if(id==0||id==uint.MaxValue)return null;
         if(cache.TryGetValue(id,out var texture)){used[id]=++useSequence;return texture;}
         if(failed.Contains(id))return null;
         if(!requested.Contains(id)&&requested.Count>=512&&cache.Count>0)
@@ -32,7 +32,7 @@ internal sealed class FlatIcons : IDisposable
         if(requested.Count<512&&requested.Add(id))
         {
             try{queue.Enqueue((id,Plugin.Textures.GetIconPath(new GameIconLookup(id))));}
-            catch(Exception ex){Plugin.Log.Debug(ex,"扁平图标资源暂不可用：{Icon}",id);}
+            catch(Exception ex){requested.Remove(id);if(failed.Count<256)failed.Add(id);Plugin.Log.Debug(ex,"扁平图标资源暂不可用：{Icon}",id);}
         }
         return null;
     }

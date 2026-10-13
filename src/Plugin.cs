@@ -147,7 +147,7 @@ public sealed class Plugin : IDalamudPlugin
         }
         wasLoggedIn = loggedIn;
         var drawn = false;
-        try { using(Metrics.Measure(UiWork.Icons)){Flat.Pump(loggedIn&&Config.Enabled);Buttons.Pump(loggedIn&&Config.Enabled);}using(Metrics.Measure(UiWork.Layouts))Hotbars.Update(loggedIn && Config.Enabled && !GameGui.GameUiHidden);ui.Draw(loggedIn); drawn = true; }
+        try { using(Metrics.Measure(UiWork.Icons)){Flat.Pump(loggedIn&&Config.Enabled);}using(Metrics.Measure(UiWork.Layouts))Hotbars.Update(loggedIn && Config.Enabled && !GameGui.GameUiHidden);ui.Draw(loggedIn); drawn = true; }
         finally
         {
             GameUi.Ready = drawn && Config.Enabled && !GameGui.GameUiHidden ? ui.Ready : HudReady.None;

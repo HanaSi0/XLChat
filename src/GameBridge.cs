@@ -36,8 +36,9 @@ internal static unsafe class GameBridge
     internal static bool SetHotbarVisible(int index,bool visible)
     {
         if(!HotbarPolicy.VisibilityCommand(index,visible,out var command))return false;
-        var module=UIModule.Instance();if(module==null)return false;
-        using var entry=new Utf8String();entry.SetString(command);module->ProcessChatBoxEntry(&entry,saveToHistory:false);return true;
+        // This client reports a native access violation in ProcessChatBoxEntry.
+        // Native HUD editor remains available; never invoke the same unverified sender for hotbar commands.
+        return false;
     }
     internal static bool MainCommandEnabled(uint id)
     {
@@ -207,14 +208,6 @@ internal static unsafe class GameBridge
         if (module == null) return false;
         module->ExecuteMainCommand(command);
         return true;
-    }
-
-    internal static bool Send(string route,string recipient,string text)
-    {
-        if(!ChatPolicy.TryBuild(route,recipient,text,out var entry,out _))return false;
-        var module=UIModule.Instance();if(module==null)return false;
-        using var value=new Utf8String();value.SetString(entry);
-        module->ProcessChatBoxEntry(&value,saveToHistory:true);return true;
     }
 
     internal static SlotInfo ReadSlot(int bar, int index)

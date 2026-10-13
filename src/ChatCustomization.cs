@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
@@ -8,6 +9,7 @@ internal sealed partial class UserInterface
 {
     private void ChatSlider(string label,float value,float minimum,float maximum,Action<float> set,ref bool changed,string format="%.0f")
     {if(ImGui.SliderFloat(label,ref value,minimum,maximum,format)){set(value);changed=true;}}
+    private readonly System.Collections.Generic.Dictionary<string,string> channelNameEdits=[];
     private void DrawChatCustomization(ref bool changed)
     {
         changed|=Toggle("显示插件聊天",C.ShowChat,v=>C.ShowChat=v);
@@ -82,9 +84,12 @@ internal sealed partial class UserInterface
                 var channel=C.Channels[i];ImGui.PushID(channel.Id);
                 try
                 {
-                    if(ImGui.TreeNode(channel.Name+"##category"))
+                    if(ImGui.TreeNode(ChannelEditPolicy.Header(channel.Name)))
                     {
-                        var name=channel.Name;if(ImGui.InputText("分类名称",ref name,32)){channel.Name=name;changed=true;}
+                        var name=channelNameEdits.GetValueOrDefault(channel.Id,channel.Name);
+                        if(ImGui.InputText("分类名称",ref name,128))channelNameEdits[channel.Id]=name;
+                        if(ImGui.IsItemDeactivatedAfterEdit())
+                        {channel.Name=ChannelEditPolicy.CommitName(name,channel.Name);channelNameEdits.Remove(channel.Id);changed=true;}
                         if(i>0&&ReadableText.SmallButton("上移")){move=i;moveBy=-1;}ImGui.SameLine();
                         if(i<C.Channels.Count-1&&ReadableText.SmallButton("下移")){move=i;moveBy=1;}ImGui.SameLine();
                         if(C.Channels.Count>1&&ReadableText.SmallButton("删除"))remove=channel;

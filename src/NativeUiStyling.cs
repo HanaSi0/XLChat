@@ -49,7 +49,7 @@ internal sealed unsafe class NativeUiStyling : IDisposable
         }
         if(frameLive&&units.Count>0)
         {
-            for(int styled=0,attempts=0;styled<2&&attempts<Math.Min((int)units.Count,256);attempts++)
+            for(int styled=0,attempts=0;styled<1&&attempts<Math.Min((int)units.Count,256);attempts++)
             {
                 if(nextStyleUnit>=Math.Min((int)units.Count,256))nextStyleUnit=0;
                 var addon=units.Entries[nextStyleUnit++].Value;
@@ -81,11 +81,6 @@ internal sealed unsafe class NativeUiStyling : IDisposable
             {
                 var slot = bar->ActionBarSlotVector[i];
                 var frame = slot.IconFrame;
-                if(slot.ComponentDragDrop!=null&&slot.ComponentDragDrop->AtkComponentIcon!=null)
-                {
-                    var nativeIcon=slot.ComponentDragDrop->AtkComponentIcon;
-                    PaintIcon(addon,nativeIcon,live&&visible&&c.FlatNativeIcons&&!c.ExcludedNativeWindows.Contains(name));
-                }
                 // Never suppress a container; a client variant may place content under it.
                 if (frame != null && frame->ChildNode == null && (frame->Type == NodeType.Image || frame->Type == NodeType.NineGrid))
                     Change(addon, frame, live && visible && c.SquareHotbars && !c.ExcludedNativeWindows.Contains(name), true);
@@ -154,16 +149,11 @@ internal sealed unsafe class NativeUiStyling : IDisposable
     private void WalkText(AtkUnitBase* addon, AtkUldManager* manager, bool enabled, int depth, ref int budget,bool buttonScope=false)
     {
         if (depth > 6 || manager == null || manager->NodeList == null) return;
-        var allowed=frameLive&&!Plugin.InstanceConfig.ExcludedNativeWindows.Contains(Plugin.Names.Get(addon));
-        if(allowed&&Plugin.InstanceConfig.FlatNativeIcons)
-            for(var a=0;manager->Assets!=null&&a<Math.Min((int)manager->AssetCount,1024);a++)Plugin.NativeRedraw.Icon(&manager->Assets[a]);
         for (var i = 0; i < Math.Min((int)manager->NodeListCount, 2048) && budget > 0; i++)
         {
             budget--;
             var node = manager->NodeList[i];
             if (node == null) continue;
-            if(buttonScope&&allowed&&Plugin.InstanceConfig.FlatNativeButtons&&node->Type==NodeType.Image)
-                if(Plugin.NativeRedraw.Glyph((AtkImageNode*)node))node->IsDirty=true;
             if (node->Type == NodeType.Text)
             {
                 var text = (AtkTextNode*)node;
@@ -180,39 +170,9 @@ internal sealed unsafe class NativeUiStyling : IDisposable
                 var component = node->GetComponent();
                 if(component != null)
                 {
-                    var kind=component->GetComponentType();
-                    if(allowed&&Plugin.InstanceConfig.FlatNativeIcons&&(kind is ComponentType.Icon or ComponentType.DragDrop))
-                    {
-                        var icon=kind==ComponentType.Icon?(AtkComponentIcon*)component:((AtkComponentDragDrop*)component)->AtkComponentIcon;
-                        if(icon!=null)PaintIcon(addon,icon,true);
-                    }
-                    var isButton=kind is ComponentType.Button or ComponentType.RadioButton or ComponentType.CheckBox or ComponentType.ListItemRenderer or ComponentType.HoldButton;
-                    if(isButton)
-                    {
-                        var parts=component->UldManager.NodeList;
-                        for(var j=0;parts!=null&&j<Math.Min((int)component->UldManager.NodeListCount,64);j++)
-                        {
-                            var part=parts[j];if(part!=null&&part->Type==NodeType.NineGrid&&part->ChildNode==null)
-                            {
-                                Change(addon,part,false,true);
-                                if(frameLive&&Plugin.InstanceConfig.FlatNativeButtons&&!Plugin.InstanceConfig.ExcludedNativeWindows.Contains(Plugin.Names.Get(addon))&&Plugin.NativeRedraw.Button((AtkNineGridNode*)part))part->IsDirty=true;
-                            }
-                        }
-                    }
-                    WalkText(addon,&component->UldManager,enabled,depth+1,ref budget,buttonScope||isButton);
+                    WalkText(addon,&component->UldManager,enabled,depth+1,ref budget);
                 }
             }
-        }
-    }
-    private void PaintIcon(AtkUnitBase* addon,AtkComponentIcon* icon,bool enabled)
-    {
-        if(!enabled)return;
-        var image=icon->IconImage;if(image==null||icon->Texture==null)return;
-        if(Plugin.NativeRedraw.Icon(icon->Texture,icon->IconId))((AtkResNode*)image)->IsDirty=true;
-        if(Plugin.InstanceConfig.FlatNativeButtons)
-        {
-            if(Plugin.NativeRedraw.Frame(icon->Frame))icon->Frame->IsDirty=true;
-            if(Plugin.NativeRedraw.Frame(icon->ComboBorder))icon->ComboBorder->IsDirty=true;
         }
     }
     private void AddOutline(string name, AtkResNode* node, float radius)

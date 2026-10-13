@@ -113,7 +113,8 @@ internal sealed partial class UserInterface
             else if(ReadableText.Button("读取并单独控制此栏"))
             {C.HotbarLayouts[name]=new(){Position=bar.Position,Scale=bar.Scale};C.UseHotbarLayouts=true;changed=true;}
         }
-        ImGui.BeginDisabled(!C.NativeInteractions);
+        ReadableText.TextDisabled("显示／隐藏命令暂时停用，请使用原版 HUD 编辑器调整。");
+        ImGui.BeginDisabled(true);
         try
         {
             if(ReadableText.SmallButton("显示此栏"))Native(()=>GameBridge.SetHotbarVisible(selectedHotbar,true));

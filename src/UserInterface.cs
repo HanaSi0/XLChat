@@ -323,10 +323,10 @@ internal sealed partial class UserInterface(Plugin plugin)
                     changed |= Toggle("小地图方形外框", C.SquareMinimap, v => C.SquareMinimap = v);
                     changed |= Toggle("方形地图替代原版小地图", C.RebuildMinimap, v => C.RebuildMinimap = v);
                     changed |= Toggle("插件图标扁平化", C.FlatIcons, v => C.FlatIcons = v);
-                    changed |= Toggle("游戏图标平面重绘（实验）", C.FlatNativeIcons, v => C.FlatNativeIcons = v);
-                    changed |= Toggle("菜单与技能按钮平面重绘（实验）", C.FlatNativeButtons, v => C.FlatNativeButtons = v);
+
+                    ReadableText.TextWrapped("0.3.1 暂停原生共享纹理改写，保留游戏图标、按钮和原生状态反馈。插件自有图标仍可平面化。");
                     var shade=C.ReadabilityShade; if(ImGui.SliderFloat("文字背衬强度", ref shade, 0, .8f)){C.ReadabilityShade=shade;changed=true;}
-                    ReadableText.TextWrapped("方形地图铺满视口，读取游戏地图和标记。图标按原轮廓重绘色块与轮廓线；按钮生成新的底色与描边，保留游戏的冷却、拖放、裁切和状态反馈。纹理重绘会影响共享素材；逐窗排除控制窗口外观，图标与按钮使用全局开关。");
+                    ReadableText.TextWrapped("方形地图铺满视口，读取游戏地图和标记。原生窗口外观可逐窗排除；原生纹理重绘暂停，避免共享纹理冲突。");
                     changed |= Toggle("原生标准窗口统一色调与透明度（实验）", C.StyleNativeWindows, v => C.StyleNativeWindows = v);
                     ReadableText.TextDisabled($"已显示热键栏 {plugin.NativeStyle.ActiveBars.Count} 个，已换肤窗口 {plugin.NativeStyle.StyledWindows.Count} 个，已替换纹理 {plugin.Redraw.Count} 个");
                     if(ReadableText.Button("打开耗时诊断"))PerformanceOpen=true;

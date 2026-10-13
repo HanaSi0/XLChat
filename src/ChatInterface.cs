@@ -309,10 +309,10 @@ internal sealed partial class UserInterface
         try
         {
             ImGui.SetNextItemWidth(input);
-            var enter=ImGui.InputTextWithHint("##chat-draft","输入消息，Enter 发送",ref draft,1500,ImGuiInputTextFlags.EnterReturnsTrue);
+            var enter=ImGui.InputTextWithHint("##chat-draft","输入消息，Enter 复制到原版发送",ref draft,1500,ImGuiInputTextFlags.EnterReturnsTrue);
             composerUsable=ImGui.IsItemVisible()&&ImGui.GetItemRectMax().Y<=ImGui.GetWindowPos().Y+ImGui.GetWindowSize().Y;
             var clicked=false;
-            if(C.ChatShowSendButton){ImGui.SameLine();clicked=ReadableText.Button(button<ImGui.CalcTextSize("发送").X+8?"→":"发送",new Vector2(button,Math.Max(ImGui.GetFontSize()+4,C.ChatSendButtonHeight*scale)));}
+            if(C.ChatShowSendButton){ImGui.SameLine();clicked=ReadableText.Button(button<ImGui.CalcTextSize("复制").X+8?"→":"复制",new Vector2(button,Math.Max(ImGui.GetFontSize()+4,C.ChatSendButtonHeight*scale)));}
             if(clicked||enter)SendChat();
         }
         finally{ImGui.PopStyleVar();}
@@ -358,8 +358,11 @@ internal sealed partial class UserInterface
     {
         if(!ChatPolicy.TryBuild(chatRoute,tellRecipient,draft,out _,out var error)){notice=error;return;}
         if(!C.NativeInteractions){notice="请在模块设置中启用游戏交互。";return;}
-        var submitted=false;chatSubmitted=DateTime.Now;plugin.LatestChatError="";Native(()=>submitted=GameBridge.Send(chatRoute,tellRecipient,draft));
-        if(submitted){draft="";channelDrafts[plugin.ActiveChannel]="";notice="已提交；送达和权限结果以游戏提示为准。";}
-        else notice="游戏聊天入口暂未就绪。";
+        ChatPolicy.TryBuild(chatRoute,tellRecipient,draft,out var command,out _);
+        ImGui.SetClipboardText(command);
+        C.ShowOriginalUi=true;C.HideOriginalChat=false;plugin.Save();
+        channelDrafts[plugin.ActiveChannel]=draft;
+        notice="完整聊天指令已复制。点击原版聊天，粘贴并按 Enter 发送。当前国服原生发送接口已暂停，草稿保留。";
+
     }
 }
