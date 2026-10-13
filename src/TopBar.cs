@@ -13,8 +13,20 @@ using Lumina.Excel.Sheets;
 namespace XLinUI;
 internal sealed partial class UserInterface
 {
+    private List<TopItem>? cachedTopItems;
+    private DateTime nextTopRefresh;
+    private int pluginCountDirty=1;
+    internal void InvalidatePluginCount()=>System.Threading.Interlocked.Exchange(ref pluginCountDirty,1);
+    private int cachedPluginCount;
+    private List<TopItem>? layoutTopItems;
+    private List<TopItem> layoutLeft=[],layoutRight=[];
+    private TopLayout? cachedTopLayout;
+    private (float Width,float Font,float Scale,float Gap,float Icon,float Max,bool Icons) topLayoutKey;
+    private readonly Dictionary<(TopItem Item,float Width),string> fittedTopLabels=[];
     private void DrawTop()
     {
+        if(cachedTopItems is not null&&DateTime.UtcNow<nextTopRefresh){DrawTopItems(cachedTopItems);return;}
+        nextTopRefresh=DateTime.UtcNow.AddMilliseconds(250);
         if ((DateTime.UtcNow - lastTelemetry).TotalSeconds >= 1)
         {
             try
@@ -26,6 +38,7 @@ internal sealed partial class UserInterface
             catch (Exception ex) { Plugin.Log.Debug(ex, "顶部状态暂不可用"); }
             lastTelemetry = DateTime.UtcNow;
         }
+        if(System.Threading.Interlocked.Exchange(ref pluginCountDirty,0)!=0)cachedPluginCount=Plugin.Interface.InstalledPlugins.Count(p=>p.IsLoaded);
         var player = Plugin.Objects.LocalPlayer;
         var map = Plugin.Data.GetExcelSheet<Map>().GetRowOrDefault(Plugin.Client.MapId);
         var mapName = map is {} currentMap&&currentMap.PlaceName.IsValid?currentMap.PlaceName.Value.Name.ToString():null;
@@ -47,7 +60,7 @@ internal sealed partial class UserInterface
             new(telemetryAvailable ? $"金币 {gil:N0}" : "金币 --", () => currencyOpen = !currencyOpen, "左键：货币；右键：背包", () => OpenGame(10)),
             new("传送面板", () => { teleportOpen = true; RefreshTeleports(); }),
             new(mapName, () => OpenGame(16)),
-            new($"插件收纳 {Plugin.Interface.InstalledPlugins.Count(p => p.IsLoaded)}", () => Plugin.Interface.OpenPluginInstallerTo(PluginInstallerOpenKind.InstalledPlugins)),
+            new($"插件收纳 {cachedPluginCount}", () => Plugin.Interface.OpenPluginInstallerTo(PluginInstallerOpenKind.InstalledPlugins)),
             new("指令收纳", () => commandsOpen = true),
             new("背包", () => inventoryOpen = true),
             new("任务", () => questsOpen = true),
@@ -76,7 +89,7 @@ internal sealed partial class UserInterface
             new TopItem(C.ShowOriginalUi ? "隐藏原版 UI" : "恢复原版 UI", () => { C.ShowOriginalUi = !C.ShowOriginalUi; plugin.Save(); }, Key:"original"),
         ]);
         items.RemoveAll(item => item.Key is not null && !C.TopSections.GetValueOrDefault(item.Key, true) && (C.ShowOriginalUi || item.Key is not ("settings" or "original")));
-        DrawTopItems(items);
+        cachedTopItems=items;DrawTopItems(items);
     }
 
     private sealed record TopItem(string Label,System.Action? Click=null,string? Tooltip=null,System.Action? RightClick=null,string? Key=null);
@@ -128,10 +141,15 @@ internal sealed partial class UserInterface
     {
         var scale=ImGuiHelpers.GlobalScale;var viewport=ImGuiHelpers.MainViewport;
         var iconSize=C.TopIconSize*scale;var padding=8*scale;var gap=C.TopGap*scale;
-        var left=items.Where(i=>!C.TopPinned.GetValueOrDefault(i.Key??"",false)).ToList();
-        var right=items.Where(i=>C.TopPinned.GetValueOrDefault(i.Key??"",false)).ToList();
-        float Measure(TopItem item)=>Math.Min(ImGui.CalcTextSize(item.Label).X,C.TopMaxLabelWidth*scale)+padding*2+2*scale+(C.TopIcons?iconSize+5*scale:0);
-        var plan=TopBarLayout.Arrange(Math.Max(1,viewport.Size.X-padding*2),gap,left.Select(Measure).ToArray(),right.Select(Measure).ToArray());
+        var key=(viewport.Size.X,ImGui.GetFontSize(),scale,gap,iconSize,C.TopMaxLabelWidth,C.TopIcons);
+        if(!ReferenceEquals(layoutTopItems,items)||topLayoutKey!=key)
+        {
+            layoutTopItems=items;topLayoutKey=key;layoutLeft.Clear();layoutRight.Clear();fittedTopLabels.Clear();
+            foreach(var item in items)(C.TopPinned.GetValueOrDefault(item.Key??"",false)?layoutRight:layoutLeft).Add(item);
+            float Measure(TopItem item)=>Math.Min(ImGui.CalcTextSize(item.Label).X,C.TopMaxLabelWidth*scale)+padding*2+2*scale+(C.TopIcons?iconSize+5*scale:0);
+            cachedTopLayout=TopBarLayout.Arrange(Math.Max(1,viewport.Size.X-padding*2),gap,layoutLeft.Select(Measure).ToArray(),layoutRight.Select(Measure).ToArray());
+        }
+        var left=layoutLeft;var right=layoutRight;var plan=cachedTopLayout!;
         var rowHeight=Math.Max(ImGui.GetFontSize(),C.TopIcons?iconSize:0)+C.TopRowPadding*2*scale;
         ImGui.SetNextWindowPos(viewport.Pos);ImGui.SetNextWindowSize(new(viewport.Size.X,plan.Rows*rowHeight+8*scale));
         var visible=ImGui.Begin("##XLinUITop",ImGuiWindowFlags.NoDecoration|ImGuiWindowFlags.NoMove|ImGuiWindowFlags.NoSavedSettings|ImGuiWindowFlags.NoScrollbar|ImGuiWindowFlags.NoScrollWithMouse);
@@ -141,12 +159,13 @@ internal sealed partial class UserInterface
             foreach(var slot in plan.Slots)
             {
                 var item=(slot.Right?right:left)[slot.Index];var pos=ImGui.GetWindowPos()+new Vector2(padding+slot.X,4*scale+slot.Row*rowHeight);
-                ImGui.SetCursorScreenPos(pos);ImGui.PushID((slot.Right?"right":"left")+slot.Index);
+                ImGui.SetCursorScreenPos(pos);ImGui.PushID((slot.Right?1000:0)+slot.Index);
                 var clicked=ImGui.InvisibleButton("##top",new Vector2(slot.Width,rowHeight));var hovered=ImGui.IsItemHovered();
                 var draw=ImGui.GetWindowDrawList();
                 if(hovered&&item.Click is not null)draw.AddRectFilled(pos,pos+new Vector2(slot.Width,rowHeight),ImGui.ColorConvertFloat4ToU32(new Vector4(C.Tint,.22f)),C.Rounded?4*scale:0);
                 draw.PushClipRect(pos,pos+new Vector2(slot.Width,rowHeight),true);
-                var text=FitTopLabel(item.Label,Math.Max(0,slot.Width-padding*2-(C.TopIcons?iconSize+5*scale:0)));
+                var availableWidth=Math.Max(0,slot.Width-padding*2-(C.TopIcons?iconSize+5*scale:0));
+                if(!fittedTopLabels.TryGetValue((item,availableWidth),out var text)){text=FitTopLabel(item.Label,availableWidth);fittedTopLabels[(item,availableWidth)]=text;}
                 var content=ImGui.CalcTextSize(text).X+(C.TopIcons?iconSize+5*scale:0);
                 var x=pos.X+Math.Max(padding,(slot.Width-content)/2);
                 if(C.TopIcons)

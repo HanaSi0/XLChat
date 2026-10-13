@@ -26,6 +26,11 @@ internal sealed partial class UserInterface
     private DateTime noviceJoinSubmitted;
     private int expandedChatRows;
     private Dictionary<ushort,string>? chatLabels;
+    private readonly Dictionary<long,(string Time,string Sender,string Prefix,string Stamp)> renderedChatText=[];
+    private readonly Dictionary<long,(float Height,bool Grouped,bool HasPrevious)> chatRowHeights=[];
+    private (bool Seconds,bool Time,bool Channel,ChatPresentation Presentation,float Header,float Stamp,float Space,float GroupSpace,bool Groups,string FontFile,int FontFace,float FontSize,bool CustomFont) chatTextKey;
+    private (float Width,float Font,float Scale) chatHeightKey;
+    private static readonly string[] sendRouteLabels=ChatPolicy.Routes.Select(r=>r.Label).ToArray();
 
     internal void ResetChatLayout(){applyChatSize=true;applyChatPosition=true;importedLayouts.Remove("chat");}
     private string ChannelName(ushort type)
@@ -199,24 +204,37 @@ internal sealed partial class UserInterface
             ImGui.SameLine();if(ReadableText.SmallButton("最新")){expandedChatRows=0;jumpLatest=true;}
             ReadableText.TextDisabled($"筛选结果 {filteredChat.Count} 条 · 当前展开 {Math.Min(filteredChat.Count,C.ChatPageSize+expandedChatRows)} 条");
         }
+        var textKey=(C.ChatTimestampSeconds,C.ChatShowTimestamp,C.ChatShowChannelName,C.ChatPresentation,C.ChatHeaderFontScale,C.ChatTimestampFontScale,C.ChatLineSpacing,C.ChatGroupSpacing,C.ChatGroupMessages,C.FontFile,C.FontFace,C.FontSize,C.UseCustomFont);
+        if(chatTextKey!=textKey||renderedChatText.Count>C.ChatHistoryLimit){chatTextKey=textKey;renderedChatText.Clear();chatRowHeights.Clear();}
         ChatLine? previous=null;
         var width=C.ChatMessageWidth>0?Math.Min(C.ChatMessageWidth*ImGuiHelpers.GlobalScale,ImGui.GetContentRegionAvail().X):ImGui.GetContentRegionAvail().X;
-        foreach(var line in filteredChat.Skip(Math.Max(0,filteredChat.Count-C.ChatPageSize-expandedChatRows)))
+        var heightKey=(width,ImGui.GetFontSize(),ImGuiHelpers.GlobalScale);
+        if(chatHeightKey!=heightKey){chatHeightKey=heightKey;chatRowHeights.Clear();}
+        var clipTop=ImGui.GetWindowPos().Y;var clipBottom=clipTop+ImGui.GetWindowSize().Y;
+        for(var rowIndex=Math.Max(0,filteredChat.Count-C.ChatPageSize-expandedChatRows);rowIndex<filteredChat.Count;rowIndex++)
         {
-            ImGui.PushID(line.Id.ToString());
+            var line=filteredChat[rowIndex];var rowStart=ImGui.GetCursorScreenPos().Y;
+            var grouped=C.ChatGroupMessages&&previous is not null&&previous.Sender==line.Sender&&previous.Type==line.Type&&(line.Time-previous.Time).TotalMinutes<2;
+            if(chatRowHeights.TryGetValue(line.Id,out var measured)&&measured.Grouped==grouped&&measured.HasPrevious==(previous is not null)&&(rowStart+measured.Height<clipTop-8||rowStart>clipBottom+8))
+            {ImGui.Dummy(new Vector2(1,measured.Height));previous=line;continue;}
+            ImGui.PushID((int)(line.Id&int.MaxValue));
             try
             {
-                var time=line.Time.ToString(C.ChatTimestampSeconds?"HH:mm:ss":"HH:mm");
+                if(!renderedChatText.TryGetValue(line.Id,out var formatted))
+                {
+                    var timestamp=line.Time.ToString(C.ChatTimestampSeconds?"HH:mm:ss":"HH:mm");
+                    var author=string.IsNullOrWhiteSpace(line.Sender)?"系统":line.Sender;
+                    formatted=(timestamp,author,(C.ChatShowTimestamp?timestamp+" ":"")+(C.ChatShowChannelName?$"[{ChannelName(line.Type)}] ":""),(C.ChatShowChannelName?ChannelName(line.Type):"")+(C.ChatShowTimestamp?(C.ChatShowChannelName?" · ":"")+timestamp:""));renderedChatText[line.Id]=formatted;
+                }
+                var time=formatted.Time;var sender=formatted.Sender;
                 var color=channel.CustomColor?channel.Color:C.Tint;
-                var sender=string.IsNullOrWhiteSpace(line.Sender)?"系统":line.Sender;
                 if(C.ChatPresentation==ChatPresentation.Compact)
                 {
-                    var prefix=(C.ChatShowTimestamp?time+" ":"")+(C.ChatShowChannelName?$"[{ChannelName(line.Type)}] ":"");
+                    var prefix=formatted.Prefix;
                     ReadableText.TextWrapped(prefix+sender+"："+line.Text,width);
                 }
                 else
                 {
-                    var grouped=C.ChatGroupMessages&&previous is not null&&previous.Sender==line.Sender&&previous.Type==line.Type&&(line.Time-previous.Time).TotalMinutes<2;
                     if(!grouped)
                     {
                         if(previous is not null)ImGui.Dummy(new Vector2(0,C.ChatGroupSpacing*ImGuiHelpers.GlobalScale));
@@ -226,7 +244,7 @@ internal sealed partial class UserInterface
                         if(C.ChatShowTimestamp||C.ChatShowChannelName)
                         {
                             ImGui.SetWindowFontScale(C.ChatFontScale*C.ChatTimestampFontScale);
-                            var stamp=(C.ChatShowChannelName?ChannelName(line.Type):"")+(C.ChatShowTimestamp?(C.ChatShowChannelName?" · ":"")+time:"");
+                            var stamp=formatted.Stamp;
                             if(senderWidth+ImGui.CalcTextSize(stamp).X+ImGui.GetStyle().ItemSpacing.X<=width)ImGui.SameLine();
                             ReadableText.TextWrapped(stamp,width);
                         }
@@ -236,6 +254,7 @@ internal sealed partial class UserInterface
                 }
                 DrawMessageContext(line);
                 if(C.ChatLineSpacing>0)ImGui.Dummy(new Vector2(0,C.ChatLineSpacing*ImGuiHelpers.GlobalScale));
+                chatRowHeights[line.Id]=(Math.Max(1,ImGui.GetCursorScreenPos().Y-rowStart-ImGui.GetStyle().ItemSpacing.Y),grouped,previous is not null);
                 previous=line;
             }
             finally{ImGui.PopID();}
@@ -278,7 +297,7 @@ internal sealed partial class UserInterface
         var scale=ImGuiHelpers.GlobalScale;
         var index=Math.Max(0,ChatPolicy.Routes.FindIndex(r=>r.Key==chatRoute));
         ImGui.SetNextItemWidth(Math.Min(C.ChatSelectorWidth*scale,ImGui.GetContentRegionAvail().X));
-        if(ImGui.Combo("##send-route",ref index,ChatPolicy.Routes.Select(r=>r.Label).ToArray(),ChatPolicy.Routes.Count)){chatRoute=ChatPolicy.Routes[index].Key;plugin.Save();}
+        if(ImGui.Combo("##send-route",ref index,sendRouteLabels,sendRouteLabels.Length)){chatRoute=ChatPolicy.Routes[index].Key;plugin.Save();}
         if(ImGui.GetContentRegionAvail().X>100*scale){ImGui.SameLine();var followNow=C.ChatFollow;if(ReadableText.Checkbox("跟随",ref followNow)){C.ChatFollow=followNow;plugin.Save();}}
         if(C.ChatShowNoviceJoin)DrawNoviceJoin();
         if(chatRoute=="tell"){ImGui.SetNextItemWidth(-1);ImGui.InputTextWithHint("##tell-recipient","玩家名@世界名",ref tellRecipient,100);}

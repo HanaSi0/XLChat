@@ -11,6 +11,7 @@ namespace XLinUI;
 internal readonly record struct MinimapMarker(Vector2 World,uint Icon,string Label);
 internal sealed partial class UserInterface
 {
+    private static readonly unsafe ImGuiSizeCallback constrainMapSize=data=>data->DesiredSize=VisualPolicy.SquareSize(data->CurrentSize,data->DesiredSize);
     private readonly List<MinimapMarker> minimapMarkers=[];
     private DateTime lastMapMarkers;
     private uint minimapId;
@@ -60,48 +61,45 @@ internal sealed partial class UserInterface
         var texture=Plugin.Textures.GetFromGame(minimapPath).GetWrapOrDefault();
         minimapResourceReady=texture is not null;if(texture is null)return;
         var scale=ImGuiHelpers.GlobalScale;var viewport=ImGuiHelpers.MainViewport;
-        ImGui.SetNextWindowSize(new Vector2(C.MinimapSize,C.MinimapSize+72)*scale,ImGuiCond.FirstUseEver);
-        ImGui.SetNextWindowSizeConstraints(new Vector2(170,240)*scale,new Vector2(700,770)*scale);
+        ImGui.SetNextWindowSize(new Vector2(C.MinimapSize)*scale,ImGuiCond.FirstUseEver);
+        ImGui.SetNextWindowSizeConstraints(new Vector2(170)*scale,new Vector2(700)*scale,constrainMapSize);
         ImGui.SetNextWindowPos(viewport.Pos+new Vector2(viewport.Size.X-C.MinimapSize*scale-24,90*scale),ImGuiCond.FirstUseEver);
-        ImportLayout("minimap",new Vector2(C.MinimapSize,C.MinimapSize+72)*scale,"_NaviMap");
-        var visible=ImGui.Begin("小地图###XLinUIMinimap",WindowFlags);
+        ImportLayout("minimap",new Vector2(C.MinimapSize)*scale,"_NaviMap");
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding,Vector2.Zero);
+        var visible=ImGui.Begin("小地图###XLinUIMinimap",WindowFlags|ImGuiWindowFlags.NoScrollbar|ImGuiWindowFlags.NoScrollWithMouse);
         try
         {
-            if(!visible)return;Appearance.DrawBackground();
-            ReadableText.TextUnformatted(minimapTitle);ImGui.SameLine();
-            if(ReadableText.SmallButton("−")){C.MinimapZoom=Math.Clamp(C.MinimapZoom-.2f,.5f,4);plugin.Save();}
-            ImGui.SameLine();if(ReadableText.SmallButton("+")){C.MinimapZoom=Math.Clamp(C.MinimapZoom+.2f,.5f,4);plugin.Save();}
-            var size=Math.Max(30,Math.Min(ImGui.GetContentRegionAvail().X,ImGui.GetContentRegionAvail().Y-ImGui.GetFontSize()-8));
-            if(size<100)return;
-            var pos=ImGui.GetCursorScreenPos();var dimension=new Vector2(size);
-            ImGui.InvisibleButton("square-map",dimension);
+            if(!visible)return;
+            var pos=ImGui.GetWindowPos();var dimension=ImGui.GetWindowSize();
+            ImGui.SetCursorScreenPos(pos+new Vector2(0,32)*scale);
+            ImGui.InvisibleButton("square-map",new Vector2(dimension.X,Math.Max(1,dimension.Y-56*scale)));
             var hovered=ImGui.IsItemHovered();var draw=ImGui.GetWindowDrawList();
             var world=new Vector2(player.Position.X,player.Position.Z);
             var center=VisualPolicy.MapUv(world,minimapFactor,minimapOffset);
-            var crop=VisualPolicy.Crop(center,C.MinimapZoom);
+            var crop=VisualPolicy.Crop(center,C.MinimapZoom,dimension.X/Math.Max(1,dimension.Y));
             draw.AddRectFilled(pos,pos+dimension,0xff211a12);draw.AddImage(texture.Handle,pos,pos+dimension,crop.Min,crop.Max);
             draw.PushClipRect(pos,pos+dimension,true);
             var mouse=ImGui.GetMousePos();MinimapMarker? selected=null;
             foreach(var marker in minimapMarkers)
             {
                 var uv=VisualPolicy.MapUv(marker.World,minimapFactor,minimapOffset);
-                var point=pos+(uv-crop.Min)/(crop.Max-crop.Min)*size;
-                if(point.X<pos.X||point.Y<pos.Y||point.X>pos.X+size||point.Y>pos.Y+size)continue;
+                var point=pos+(uv-crop.Min)/(crop.Max-crop.Min)*dimension;
+                if(point.X<pos.X||point.Y<pos.Y||point.X>pos.X+dimension.X||point.Y>pos.Y+dimension.Y)continue;
                 var icon=(C.FlatIcons?plugin.Flat.Get(marker.Icon):null)??Plugin.Textures.GetFromGameIcon(new GameIconLookup(marker.Icon)).GetWrapOrDefault();
                 if(icon is not null)draw.AddImage(icon.Handle,point-new Vector2(9*scale),point+new Vector2(9*scale));else draw.AddCircleFilled(point,3*scale,0xff95ddff);
                 if(hovered&&Vector2.Distance(mouse,point)<12*scale)selected=marker;
             }
-            var playerPoint=pos+(center-crop.Min)/(crop.Max-crop.Min)*size;
+            var playerPoint=pos+(center-crop.Min)/(crop.Max-crop.Min)*dimension;
             var forward=new Vector2(MathF.Sin(player.Rotation),MathF.Cos(player.Rotation));
             var side=new Vector2(forward.Y,-forward.X);
             draw.AddTriangleFilled(playerPoint+forward*9*scale,playerPoint-forward*5*scale+side*5*scale,playerPoint-forward*5*scale-side*5*scale,0xffffffff);
-            draw.AddText(pos+new Vector2(6,4),0xffffffff,"N");draw.PopClipRect();
+            draw.AddText(pos+new Vector2(dimension.X/2-4,36*scale),0xffffffff,"N");draw.PopClipRect();
             draw.AddRect(pos,pos+dimension,0xffb4b4b4,0f);
             if(hovered)
             {
                 if(ImGui.GetIO().MouseWheel!=0){C.MinimapZoom=Math.Clamp(C.MinimapZoom+ImGui.GetIO().MouseWheel*.1f,.5f,4);plugin.Save();}
                 if(selected is {} marker)ImGui.SetTooltip(marker.Label+"\n点击打开地图位置");
-                if(ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+                if(mouse.Y>pos.Y+32*scale&&mouse.Y<pos.Y+dimension.Y-24*scale&&ImGui.IsMouseClicked(ImGuiMouseButton.Left))
                 {
                     if(selected is {} selectedMarker)
                     {var link=new MapLinkPayload(Plugin.Client.TerritoryType,minimapId,selectedMarker.World.X,selectedMarker.World.Y);Native(()=>Plugin.GameGui.OpenMapWithMapLink(link));}
@@ -109,9 +107,15 @@ internal sealed partial class UserInterface
                 }
             }
             var coordinates=Vector2.One+(center*2048/minimapFactor*100)/50;
-            ReadableText.TextDisabled($"X {coordinates.X:F1} · Y {coordinates.Y:F1} · 北向上");
+            draw.AddRectFilled(pos,pos+new Vector2(dimension.X,32*scale),0xc0201810);
+            draw.AddRectFilled(pos+new Vector2(0,dimension.Y-24*scale),pos+dimension,0xc0201810);
+            ImGui.SetCursorScreenPos(pos+new Vector2(6,2)*scale);
+            if(ReadableText.SmallButton("−")){C.MinimapZoom=Math.Clamp(C.MinimapZoom-.2f,.5f,4);plugin.Save();}
+            ImGui.SameLine();if(ReadableText.SmallButton("+")){C.MinimapZoom=Math.Clamp(C.MinimapZoom+.2f,.5f,4);plugin.Save();}
+            ImGui.SameLine();ReadableText.TextUnformatted(minimapTitle);
+            ReadableText.Draw(draw,pos+new Vector2(6,dimension.Y/scale-21)*scale,0xffffffff,$"X {coordinates.X:F1} · Y {coordinates.Y:F1}");
             Ready|=HudReady.Minimap;
         }
-        finally{EndPanel();}
+        finally{EndPanel();ImGui.PopStyleVar();}
     }
 }

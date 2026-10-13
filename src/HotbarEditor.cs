@@ -90,7 +90,7 @@ internal sealed partial class UserInterface
         var names=Enumerable.Range(1,10).Select(i=>$"热键栏 {i}").ToArray();
         ImGui.SetNextItemWidth(150*ImGuiHelpers.GlobalScale);ImGui.Combo("选择热键栏",ref selectedHotbar,names,10);
         var name=HotbarPolicy.Name(selectedHotbar);var bar=plugin.Hotbars.Bars.FirstOrDefault(b=>b.Name==name);
-        if(bar is null){ReadableText.TextDisabled("该栏尚未加载；可用下面的显示按钮启用，或进入原版 HUD 编辑器。");}
+        if(bar.Name is null){ReadableText.TextDisabled("该栏尚未加载；可用下面的显示按钮启用，或进入原版 HUD 编辑器。");}
         else
         {
             ReadableText.TextUnformatted($"{bar.Shape} · 原版缩放 {bar.Scale:P0} · {(bar.Visible?"已显示":"已隐藏")}");
@@ -161,7 +161,7 @@ internal sealed partial class UserInterface
                     foreach(var selected in selectedBars)
                     {
                         var current=plugin.Hotbars.Bars.FirstOrDefault(b=>b.Name==selected);
-                        if(current is not null&&C.HotbarLayouts.TryGetValue(selected,out var selectedLayout)&&selectedLayout.Enabled)dragOrigins[selected]=current.Position;
+                        if(current.Name is not null&&C.HotbarLayouts.TryGetValue(selected,out var selectedLayout)&&selectedLayout.Enabled)dragOrigins[selected]=current.Position;
                     }
                     dragMouse=io.MousePos;hotbarDragged=false;
                 }
@@ -172,7 +172,7 @@ internal sealed partial class UserInterface
                     foreach(var (selected,start) in dragOrigins)
                     {
                         var current=plugin.Hotbars.Bars.FirstOrDefault(b=>b.Name==selected);
-                        if(current is null||!C.HotbarLayouts.TryGetValue(selected,out var selectedLayout))continue;
+                        if(current.Name is null||!C.HotbarLayouts.TryGetValue(selected,out var selectedLayout))continue;
                         selectedLayout.Position=HotbarPolicy.Position(start+delta,current.Size,viewport.Size,C.HotbarGrid,false);
                     }
                     hotbarDragged=true;

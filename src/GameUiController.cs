@@ -18,15 +18,24 @@ internal sealed unsafe class GameUiController : IDisposable
     private long lastDraw;
     private bool active;
     private bool rendered;
+    private bool globalDraw;
+    private static readonly string[] ReplacedAddons=["_Parameter","Parameter","_DTR","DTR","_TargetInfo","_TargetInfoMainTarget","_TargetInfoCastBar","_TargetInfoBuffDebuff","_FocusTargetInfo","_CastBar","_Status","_StatusEnhancements","_StatusAilments","_StatusOther","_PartyList","_NaviMap"];
+    private void RegisterDraw(bool all)
+    {
+        globalDraw=all;
+        if(all)Plugin.Addons.RegisterListener(AddonEvent.PreDraw,OnDraw);
+        else foreach(var name in ReplacedAddons)Plugin.Addons.RegisterListener(AddonEvent.PreDraw,name,OnDraw);
+    }
 
     internal void Register()
     {
-        Plugin.Addons.RegisterListener(AddonEvent.PreDraw, OnDraw);
+        RegisterDraw(false);
         Plugin.Addons.RegisterListener(AddonEvent.PreFinalize, OnFinalize);
     }
 
     internal void SetHide(bool value, bool uiRendered = false)
     {
+        if(globalDraw!=value){Plugin.Addons.UnregisterListener(OnDraw);RegisterDraw(value);}
         hide = value; rendered = uiRendered; lastDraw = Stopwatch.GetTimestamp(); Update();
     }
 
@@ -54,7 +63,7 @@ internal sealed unsafe class GameUiController : IDisposable
     private void OnDraw(AddonEvent type, AddonArgs args)
     {
         if (!hide && !active) return;
-        var addon = (AtkUnitBase*)Plugin.GameGui.GetAddonByName(args.AddonName).Address;
+        var addon = (AtkUnitBase*)args.Addon.Address;
         if (addon == null || addon->RootNode == null) return;
         var live = rendered && Plugin.Objects.LocalPlayer is not null && !Plugin.GameGui.GameUiHidden && Stopwatch.GetElapsedTime(lastDraw).TotalMilliseconds < 500;
         Apply(addon, live, live && hide, Plugin.Objects.LocalPlayer is not null);
@@ -62,7 +71,7 @@ internal sealed unsafe class GameUiController : IDisposable
 
     private void Apply(AtkUnitBase* addon, bool live, bool hideAll, bool loggedIn)
     {
-        var name = addon->NameString;
+        var name = Plugin.Names.Get(addon);
         var node = addon->RootNode;
         if (loggedIn)
         {
@@ -75,9 +84,9 @@ internal sealed unsafe class GameUiController : IDisposable
         var desired = live && (HudReplacementPolicy.ShouldHide(name, Ready) || GameUiVisibilityPolicy.ShouldHide(name, hideAll, config.NativeCombatWidgets, false, false, config.SquareHotbars, config.SquareMinimap));
         if (!desired && !active) return;
         var visible = state.Change(name, (nint)addon, (nint)node, node->IsVisible(), desired);
-        if (visible.HasValue) node->ToggleVisibility(visible.Value);
+        if (visible.HasValue && node->IsVisible()!=visible.Value) node->ToggleVisibility(visible.Value);
     }
-    private void OnFinalize(AddonEvent type, AddonArgs args) => state.Forget(args.AddonName);
+    private void OnFinalize(AddonEvent type, AddonArgs args){var name=args.AddonName;state.Forget(name);Layouts.Remove(name);}
 
     public void Dispose()
     {

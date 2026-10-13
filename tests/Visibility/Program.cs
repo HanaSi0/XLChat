@@ -145,9 +145,51 @@ Check(transforms.Restore("_ActionBar",1,2)?.Scale==1&&transforms.Restore("_Actio
 Check(VisualPolicy.IconSize(64,80,32)==new Vector2(32,40),"status artwork preserves portrait aspect ratio");
 Check(VisualPolicy.Group(2,true,true)==EffectGroup.Debuff,"debuff category takes precedence over permanent flags");
 Check(VisualPolicy.Group(1,false,false)==EffectGroup.Buff&&VisualPolicy.Group(1,true,false)==EffectGroup.Other,"permanent status grouped separately");
-var flat=VisualPolicy.FlattenBgra(new byte[]{32,64,96,0},1,1);
-Check(flat.SequenceEqual(new byte[]{96,64,32,0}),"flat icons preserve palette channels and transparent alpha");
+var flat=FlatIconRasterizer.Redraw(new byte[]{32,64,96,255},1,1);
+Check(flat.SequenceEqual(new byte[]{96,64,32,255}),"flat icons preserve palette channels and transparent alpha");
 Check(VisualPolicy.MapUv(Vector2.Zero,100,Vector2.Zero)==new Vector2(.5f),"map origin maps to texture center");
 var crop=VisualPolicy.Crop(Vector2.Zero,1);
 Check(crop.Min==Vector2.Zero&&crop.Max.X<=1&&crop.Max.Y<=1,"edge map crop stays within texture");
 Check(!HudReplacementPolicy.ShouldHide("_NaviMap",HudReady.None)&&HudReplacementPolicy.ShouldHide("_NaviMap",HudReady.Minimap),"map replacement hides original only when ready");
+
+var wideCrop=VisualPolicy.Crop(new Vector2(.5f),1,2);
+Check(Math.Abs((wideCrop.Max.X-wideCrop.Min.X)/(wideCrop.Max.Y-wideCrop.Min.Y)-2)<.001,"full viewport map preserves scale in both axes");
+var transparentArt=FlatIconRasterizer.Redraw(new byte[]{100,50,40,0,30,20,10,128},2,1);
+Check(transparentArt[3]==0&&transparentArt[7]==128,"redrawn silhouettes retain exact alpha coverage");
+var gradient=new byte[128*4];for(var i=0;i<128;i++){gradient[i*4]=gradient[i*4+1]=gradient[i*4+2]=(byte)(i*2);gradient[i*4+3]=255;}
+var flatGradient=FlatIconRasterizer.Redraw(gradient,128,1);
+Check(Enumerable.Range(0,128).Select(i=>flatGradient[i*4]).Distinct().Count()<=12,"gradient artwork reconstructed using bounded flat color regions");
+var atlas=new byte[8*8*4];for(var i=0;i<atlas.Length;i++)atlas[i]=128;
+var redrawn=ButtonAtlasPolicy.Redraw(atlas,8,8,new[]{new ButtonRegion(2,2,4,4)},new Vector3(.4f,.7f,.9f));
+Check(redrawn[0]==128&&redrawn[3]==128,"button redraw preserves neighboring atlas glyphs");
+Check(redrawn[(3*8+3)*4+3]==255&&redrawn[(2*8+2)*4]!=redrawn[(3*8+3)*4],"buttons have distinct flat fill and straight border");
+var frameArt=ButtonAtlasPolicy.Redraw(atlas,8,8,new[]{new ButtonRegion(2,2,4,4,true)},Vector3.One);
+Check(frameArt[(3*8+3)*4+3]==0&&frameArt[(2*8+2)*4+3]==255,"combo frames never cover underlying skill artwork");
+Check(ButtonAtlasPolicy.Redraw(atlas,8,8,new[]{new ButtonRegion(7,7,4,4)},Vector3.One).SequenceEqual(atlas),"invalid menu atlas slices cannot damage adjacent pixels");
+var access=new FakeTextureAccess();access.Add(1,10,20);var swaps=new TextureSwapState(access);
+Check(swaps.Apply(1,20,RedrawKind.Icons)&&access.Views[1]==20&&access.TextureRefs[1]==2&&access.ViewRefs[20]==2,"native redraw holds texture lifetime and replacement view");
+Check(!swaps.Apply(1,20,RedrawKind.Icons)&&access.TextureRefs[1]==2&&access.ViewRefs[20]==2,"repeated native frames do not leak references");
+access.ReleaseView(20);swaps.Restore(RedrawKind.Icons);
+Check(access.Views[1]==10&&access.TextureRefs[1]==1&&access.ViewRefs[20]==0&&access.ViewRefs[10]==1,"restoring remains safe after managed icon cache eviction");
+var changing=new FakeTextureAccess();changing.Add(1,10,20);var liveSwaps=new TextureSwapState(changing);liveSwaps.Apply(1,20,RedrawKind.Buttons);changing.ViewRefs[30]=1;
+liveSwaps.Apply(1,30,RedrawKind.Buttons);liveSwaps.Restore(RedrawKind.Buttons);
+Check(changing.Views[1]==10&&changing.ViewRefs[20]==1&&changing.ViewRefs[30]==1&&changing.TextureRefs[1]==1,"regenerated atlases replace and restore without reference leaks");
+var external=new FakeTextureAccess();external.Add(1,10,20);var externalSwap=new TextureSwapState(external);externalSwap.Apply(1,20,RedrawKind.Icons);external.GameReplace(1,40);externalSwap.Restore(RedrawKind.Icons);
+Check(external.Views[1]==40&&external.ViewRefs[10]==0&&external.TextureRefs[1]==1,"game texture updates survive plugin restoration");
+var indexed=new NativeAppearanceState();var indexedText=new NativeTextState();
+for(var i=1;i<=10000;i++){indexed.Change("large-addon",1,i,new NativeAppearance(255,100,100,100),new NativeAppearance(0,100,100,100));indexedText.Change("large-addon",1,i,new TextAppearance(0,0),true);}
+var lookupWatch=System.Diagnostics.Stopwatch.StartNew();var allocBefore=GC.GetAllocatedBytesForCurrentThread();
+for(var i=0;i<100000;i++){if(indexed.Contains("unowned")||indexedText.Contains("unowned"))throw new Exception("Wrong ownership index");}
+var lookupBytes=GC.GetAllocatedBytesForCurrentThread()-allocBefore;lookupWatch.Stop();
+Check(lookupBytes==0,"100000 ownership checks on 10000 saved nodes allocate zero bytes");
+Console.WriteLine($"BENCH: indexed ownership checks {lookupWatch.Elapsed.TotalMilliseconds:F2} ms");
+indexed.Forget("large-addon");indexedText.Forget("large-addon");Check(!indexed.Contains("large-addon")&&!indexedText.Contains("large-addon"),"finalization clears ownership indexes");
+
+Check(VisualPolicy.SquareSize(new Vector2(240),new Vector2(200,240))==new Vector2(200),"map resizing can shrink width while remaining square");
+Check(VisualPolicy.SquareSize(new Vector2(240),new Vector2(240,300))==new Vector2(300),"map resizing can enlarge height while filling a square");
+
+var glyphSource=new byte[6*6*4];for(var i=0;i<36;i++){glyphSource[i*4]=50;glyphSource[i*4+1]=100;glyphSource[i*4+2]=200;glyphSource[i*4+3]=255;}
+var glyphAtlas=ButtonAtlasPolicy.Redraw(glyphSource,6,6,new[]{new ButtonRegion(1,1,4,4,false,true)},Vector3.One);
+Check(glyphAtlas[(2*6+2)*4]==200&&glyphAtlas[(2*6+2)*4+3]==255,"menu glyphs are redrawn without replacing their shape with a solid button");
+var overlap=ButtonAtlasPolicy.Redraw(glyphSource,6,6,new[]{new ButtonRegion(1,1,4,4),new ButtonRegion(1,1,4,4,false,true)},Vector3.One);
+Check(overlap[(2*6+2)*4]<100,"procedural surfaces take precedence over duplicate glyph slices");

@@ -38,17 +38,21 @@ internal sealed unsafe class OriginalChatVisibility : IDisposable
         foreach (var name in Names) Apply(name, hide);
     }
 
-    private void OnPreDraw(AddonEvent type, AddonArgs args) => Apply(args.AddonName, desired && Stopwatch.GetElapsedTime(lastDraw).TotalMilliseconds < 500 && !Plugin.GameGui.GameUiHidden && Plugin.Objects.LocalPlayer is not null);
+    private void OnPreDraw(AddonEvent type, AddonArgs args)
+    {
+        var addon=(AtkUnitBase*)args.Addon.Address;
+        if(addon!=null)Apply(Plugin.Names.Get(addon),desired&&Stopwatch.GetElapsedTime(lastDraw).TotalMilliseconds<500&&!Plugin.GameGui.GameUiHidden&&Plugin.Objects.LocalPlayer is not null,addon);
+    }
     private void OnFinalize(AddonEvent type, AddonArgs args) => state.Forget(args.AddonName);
 
-    private void Apply(string name, bool hide)
+    private void Apply(string name, bool hide,AtkUnitBase* supplied=null)
     {
-        var addon = (AtkUnitBase*)Plugin.GameGui.GetAddonByName(name).Address;
+        var addon = supplied==null?(AtkUnitBase*)Plugin.GameGui.GetAddonByName(name).Address:supplied;
         if (addon == null || addon->RootNode == null)
         { state.Forget(name); return; }
         var node = addon->RootNode;
         var visible = state.Change(name, (nint)addon, (nint)node, node->IsVisible(), hide);
-        if (visible.HasValue) node->ToggleVisibility(visible.Value);
+        if (visible.HasValue && node->IsVisible()!=visible.Value) node->ToggleVisibility(visible.Value);
     }
 
     public void Dispose()

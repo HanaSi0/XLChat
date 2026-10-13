@@ -18,9 +18,12 @@ namespace XLinUI;
 internal sealed partial class UserInterface(Plugin plugin)
 {
     internal bool SettingsOpen;
+    internal bool PerformanceOpen;
+    private string performanceReport="";
+    private DateTime nextPerformanceReport;
     private AppearanceAssets? appearance;
     private AppearanceAssets Appearance => appearance ??= new AppearanceAssets(C);
-    internal void DisposeAssets()=>appearance?.Dispose();
+    internal void DisposeAssets(){appearance?.Dispose();appearance=null;}
     internal bool ChatVisible { get; private set; }
     private string search = "";
     private readonly HashSet<string> importedLayouts = [];
@@ -55,7 +58,7 @@ internal sealed partial class UserInterface(Plugin plugin)
         draft = search = tellRecipient = ""; importedLayouts.Clear();
         CloseHotbarEditing();
         minimapId=0;minimapMarkers.Clear();
-        channelDrafts.Clear();filteredChat.Clear();chatCacheRevision=-1;ChatAtBottom=false;chatLabels=null;chatSubmitted=default;noviceJoinSubmitted=default;notice="";expandedChatRows=0;
+        channelDrafts.Clear();filteredChat.Clear();renderedChatText.Clear();chatRowHeights.Clear();chatCacheRevision=-1;ChatAtBottom=false;chatLabels=null;chatSubmitted=default;noviceJoinSubmitted=default;notice="";expandedChatRows=0;
         bagSlots.Clear(); bagCapacity = 0; bagAvailable = false; lastInventoryRead = default;
         acceptedQuests.Clear(); lastQuestRead = default;
         gearsets.Clear(); currencies.Clear(); currencyRead = default;
@@ -67,20 +70,20 @@ internal sealed partial class UserInterface(Plugin plugin)
         if(hotbarEditing&&(!C.Enabled||!loggedIn||Plugin.GameGui.GameUiHidden))CloseHotbarEditing();
         ChatVisible = false;
         Ready = HudReady.None;
-        Appearance.Update(C.Enabled && loggedIn && !Plugin.GameGui.GameUiHidden && (C.ShowChat || C.ShowTop || C.ShowStatus || C.ModernTarget || C.ModernCast || C.ModernStatuses));
+        using(Plugin.Metrics.Measure(UiWork.Appearance))Appearance.Update(C.Enabled && loggedIn && !Plugin.GameGui.GameUiHidden && (C.ShowChat || C.ShowTop || C.ShowStatus || C.ModernTarget || C.ModernCast || C.ModernStatuses));
         using var customFont=Appearance.PushFont();
         using var theme = new Theme(C);
         if (C.Enabled && loggedIn && !Plugin.GameGui.GameUiHidden)
         {
             DrawNativeOutlines();
-            DrawNativeFlatIcons();
-            DrawCombatHud();
-            DrawMinimap();
+
+            using(Plugin.Metrics.Measure(UiWork.Combat))DrawCombatHud();
+            using(Plugin.Metrics.Measure(UiWork.Map))DrawMinimap();
             DrawHotbarEditor();
-            if (C.ShowTop || !C.ShowOriginalUi) DrawTop();
+            if (C.ShowTop || !C.ShowOriginalUi)using(Plugin.Metrics.Measure(UiWork.Top))DrawTop();
             if (C.ShowStatus) DrawStatus();
             if (C.ShowParty && !C.NativeCombatWidgets) DrawParty();
-            if (C.ShowChat) DrawChat();
+            if (C.ShowChat)using(Plugin.Metrics.Measure(UiWork.Chat))DrawChat();
             // Native hotbars retain all game interactions; the obsolete single-bar mirror is no longer drawn.
             DrawUtilityPanels();
             if (questsOpen) DrawQuests();
@@ -91,6 +94,12 @@ internal sealed partial class UserInterface(Plugin plugin)
         }
         if (SettingsOpen) DrawSettings();
         Appearance.DrawDialog();
+        if(PerformanceOpen)
+        {
+            var visible=ImGui.Begin("耗时诊断###XLinUIPerformance",ref PerformanceOpen);
+            try{if(visible){if(DateTime.UtcNow>=nextPerformanceReport){performanceReport=Plugin.Metrics.Report()+$"\n图标缓存 {plugin.Flat.Count} · 待生成 {plugin.Flat.PendingCount} · 菜单图集 {plugin.Buttons.Count} · 已替换纹理 {plugin.Redraw.Count}\n{plugin.Redraw.Failure}";nextPerformanceReport=DateTime.UtcNow.AddSeconds(.5);}ImGui.TextUnformatted(performanceReport);if(ImGui.Button("复制诊断"))ImGui.SetClipboardText(performanceReport);}}
+            finally{ImGui.End();}
+        }
     }
 
     private void OpenGame(uint command, bool forceNative = false)
@@ -314,12 +323,13 @@ internal sealed partial class UserInterface(Plugin plugin)
                     changed |= Toggle("小地图方形外框", C.SquareMinimap, v => C.SquareMinimap = v);
                     changed |= Toggle("方形地图替代原版小地图", C.RebuildMinimap, v => C.RebuildMinimap = v);
                     changed |= Toggle("插件图标扁平化", C.FlatIcons, v => C.FlatIcons = v);
-                    changed |= Toggle("普通热键栏技能图标扁平化（实验）", C.FlatNativeIcons, v => C.FlatNativeIcons = v);
-                    changed |= Toggle("标准菜单按钮去除装饰（实验）", C.FlatNativeButtons, v => C.FlatNativeButtons = v);
+                    changed |= Toggle("游戏图标平面重绘（实验）", C.FlatNativeIcons, v => C.FlatNativeIcons = v);
+                    changed |= Toggle("菜单与技能按钮平面重绘（实验）", C.FlatNativeButtons, v => C.FlatNativeButtons = v);
                     var shade=C.ReadabilityShade; if(ImGui.SliderFloat("文字背衬强度", ref shade, 0, .8f)){C.ReadabilityShade=shade;changed=true;}
-                    ReadableText.TextWrapped("方形地图读取地图纹理和游戏标记，支持缩放与点击打开地图；资源未就绪时保留原版。图标保留原始轮廓与色彩，减少渐变。特殊窗口和裁切内容保留原版，可逐窗排除。");
+                    ReadableText.TextWrapped("方形地图铺满视口，读取游戏地图和标记。图标按原轮廓重绘色块与轮廓线；按钮生成新的底色与描边，保留游戏的冷却、拖放、裁切和状态反馈。纹理重绘会影响共享素材；逐窗排除控制窗口外观，图标与按钮使用全局开关。");
                     changed |= Toggle("原生标准窗口统一色调与透明度（实验）", C.StyleNativeWindows, v => C.StyleNativeWindows = v);
-                    ReadableText.TextDisabled($"已显示热键栏 {plugin.NativeStyle.ActiveBars.Count} 个，已换肤窗口 {plugin.NativeStyle.StyledWindows.Count} 个");
+                    ReadableText.TextDisabled($"已显示热键栏 {plugin.NativeStyle.ActiveBars.Count} 个，已换肤窗口 {plugin.NativeStyle.StyledWindows.Count} 个，已替换纹理 {plugin.Redraw.Count} 个");
+                    if(ReadableText.Button("打开耗时诊断"))PerformanceOpen=true;
                     if (ImGui.TreeNode("原生窗口适配审查／逐窗排除"))
                     {
                         foreach (var entry in plugin.GameUi.Layouts.OrderBy(i => i.Key))

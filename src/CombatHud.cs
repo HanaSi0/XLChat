@@ -135,23 +135,34 @@ internal sealed partial class UserInterface
         var value=new EffectData(d.Icon,d.Name.ToString(),d.Description.ToString(),VisualPolicy.Group(d.StatusCategory,d.IsPermanent,d.IsFcBuff),d.CanStatusOff,d.CanDispel,d.MaxStacks);
         effectCache[id]=value;return value;
     }
+    private readonly System.Collections.Generic.List<IStatus>[] effectGroups=[[],[],[]];
+    private readonly System.Collections.Generic.Dictionary<(int Unit,int Value),string> durationLabels=[];
+    private string EffectDuration(float seconds)
+    {
+        if(!float.IsFinite(seconds)||seconds<=0)return "∞";
+        var unit=seconds>=3600?3600:seconds>=60?60:1;var value=(int)Math.Ceiling(seconds/unit);
+        if(durationLabels.TryGetValue((unit,value),out var text))return text;
+        if(durationLabels.Count>=256)durationLabels.Clear();text=HudValues.Duration(seconds);durationLabels[(unit,value)]=text;return text;
+    }
     private bool DrawEffectIcons(System.Collections.Generic.IEnumerable<IStatus> statuses,bool allowCancel)
     {
-        var all=statuses.Where(s=>s.StatusId!=0).ToArray();if(all.Length==0)return true;
+        foreach(var bucket in effectGroups)bucket.Clear();var statusCount=0;
+        foreach(var status in statuses)if(status.StatusId!=0){effectGroups[(int)(Effect(status.StatusId)?.Group??EffectGroup.Other)].Add(status);statusCount++;}
+        if(statusCount==0)return true;
         var available=ImGui.GetContentRegionAvail();if(available.Y<15)return false;
         var shown=ImGui.BeginChild("classified-effects",new Vector2(0,Math.Max(35,available.Y)),false);
         var complete=shown;
         try
         {
             if(!shown)return false;
-            foreach(var group in new[]{EffectGroup.Buff,EffectGroup.Debuff,EffectGroup.Other})
+            for(var groupIndex=0;groupIndex<3;groupIndex++)
             {
-                var entries=all.Where(s=>(Effect(s.StatusId)?.Group??EffectGroup.Other)==group).ToArray();if(entries.Length==0)continue;
+                var group=(EffectGroup)groupIndex;var entries=effectGroups[groupIndex];if(entries.Count==0)continue;
                 var color=group==EffectGroup.Debuff?new Vector4(1,.68f,.64f,1):group==EffectGroup.Buff?new Vector4(.72f,.95f,.84f,1):new Vector4(.8f,.84f,1,1);
-                ReadableText.TextColored(color,(group==EffectGroup.Buff?"增益":group==EffectGroup.Debuff?"减益":"其他状态")+" · "+entries.Length);
+                ReadableText.TextColored(color,(group==EffectGroup.Buff?"增益":group==EffectGroup.Debuff?"减益":"其他状态")+" · "+entries.Count);
                 var size=C.StatusIconSize*ImGuiHelpers.GlobalScale;
                 var columns=Math.Max(1,(int)(ImGui.GetContentRegionAvail().X/(size+ImGui.GetStyle().ItemSpacing.X)));
-                for(var i=0;i<entries.Length;i++)
+                for(var i=0;i<entries.Count;i++)
                 {
                     if(i>0&&i%columns!=0)ImGui.SameLine();
                     var status=entries[i];var data=Effect(status.StatusId);ImGui.PushID(i+(int)group*1000);
@@ -166,7 +177,7 @@ internal sealed partial class UserInterface
                         draw.AddRectFilled(pos-Vector2.One,pos+dimensions+Vector2.One,0xc01a1510);
                         if(icon is not null)draw.AddImage(icon.Handle,pos,pos+dimensions);else{ReadableText.Draw(draw,pos,0xffffffff,"?");complete=false;}
                         if(!C.HideBorders)draw.AddRect(pos,pos+dimensions,ImGui.ColorConvertFloat4ToU32(color),0f);
-                        ReadableText.Draw(draw,pos+new Vector2(0,dimensions.Y),0xfff4f4f4,HudValues.Duration(status.RemainingTime));
+                        ReadableText.Draw(draw,pos+new Vector2(0,dimensions.Y),0xfff4f4f4,EffectDuration(status.RemainingTime));
                         if(data is not null&&data.Stacks>1&&status.Param>0)ReadableText.Draw(draw,pos+new Vector2(size-12,2),0xffffffff,status.Param.ToString());
                         if(data?.Dispel==true)draw.AddRectFilled(pos+new Vector2(2,-3),pos+new Vector2(Math.Max(3,size-2),-1),0xffffffff);
                         if(ImGui.IsItemHovered())ImGui.SetTooltip((data?.Name??"未知状态")+"\n"+(data?.Description??"")+$"\n剩余 {status.RemainingTime:F1}s"+(allowCancel&&data?.CanCancel==true?"\n右键取消":""));

@@ -36,6 +36,7 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static ITextureProvider Textures { get; private set; } = null!;
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
 
+    internal static FlatButtonAtlases ButtonCache {get;private set;}=null!;
     internal static FlatIcons FlatCache {get;private set;}=null!;
     internal static Configuration InstanceConfig { get; private set; } = null!;
     internal Configuration Config { get; private set; }
@@ -54,24 +55,31 @@ public sealed class Plugin : IDalamudPlugin
     internal readonly NativeUiStyling NativeStyle = new();
     internal readonly NativeHotbarLayouts Hotbars = new();
     internal readonly FlatIcons Flat = new();
+    internal readonly FlatButtonAtlases Buttons=new();
+    internal readonly NativeTextureRedraw Redraw=new();
+    internal static NativeTextureRedraw NativeRedraw {get;private set;}=null!;
+    internal static AddonNames Names {get;}=new();
+    internal static PerformanceMonitor Metrics {get;}=new();
 
     public Plugin()
     {
         Config = Interface.GetPluginConfig() as Configuration ?? new Configuration();
         Config.Normalize();
         InstanceConfig = Config;
-        FlatCache=Flat;
+        FlatCache=Flat;ButtonCache=Buttons;NativeRedraw=Redraw;
         ActiveChannel = Config.ChatActiveChannelId;
         ui = new UserInterface(this);
         Commands.AddHandler("/xlinui", new CommandInfo(OnCommand)
-        { HelpMessage = "XLinUI 设置。/xlinui off 关闭全部；/xlinui on 开启；/xlinui restore 恢复原版聊天。" });
+        { HelpMessage = "XLinUI 设置。/xlinui off 关闭全部；/xlinui on 开启；/xlinui restore 恢复原版聊天；/xlinui perf 耗时诊断。" });
         Chat.ChatMessageUnhandled += OnChat;
         Chat.ChatMessageHandled += OnHandledChat;
         Framework.Update += OnUpdate;
+        Names.Register();
         originalChat.Register();
         GameUi.Register();
         NativeStyle.Register();
         Hotbars.Register();
+        Interface.ActivePluginsChanged += OnActivePluginsChanged;
         Interface.UiBuilder.Draw += Draw;
         Interface.UiBuilder.OpenConfigUi += OpenSettings;
         Interface.UiBuilder.OpenMainUi += OpenSettings;
@@ -83,6 +91,7 @@ public sealed class Plugin : IDalamudPlugin
         {
             case "off": Config.Enabled = false; Save(); break;
             case "on": Config.Enabled = true; Save(); break;
+            case "perf": ui.PerformanceOpen=true; Log.Information("{Report}",Metrics.Report()); break;
             case "restore": Config.HideOriginalChat = false; Config.ShowOriginalUi = true; Save(); break;
             default: OpenSettings(); break;
         }
@@ -105,6 +114,7 @@ public sealed class Plugin : IDalamudPlugin
         {lastWatchdog=System.Diagnostics.Stopwatch.GetTimestamp();GameUi.Update();NativeStyle.Update();originalChat.Update();Hotbars.Release();}
     }
 
+    private void OnActivePluginsChanged(IActivePluginsChangedEventArgs args)=>ui.InvalidatePluginCount();
     private void OpenSettings() => ui.SettingsOpen = true;
     internal void Save()
     {
@@ -121,12 +131,14 @@ public sealed class Plugin : IDalamudPlugin
         InstanceConfig = Config;
         ActiveChannel = Config.Channels[0].Id;
         Unread.Clear();
+        ui.DisposeAssets();
         ui.ResetChatLayout();
         Save();
     }
 
     private void Draw()
     {
+        Metrics.BeginFrame();
         lastPluginDraw=System.Diagnostics.Stopwatch.GetTimestamp();
         var loggedIn = Objects.LocalPlayer is not null;
         if (wasLoggedIn && !loggedIn)
@@ -135,12 +147,13 @@ public sealed class Plugin : IDalamudPlugin
         }
         wasLoggedIn = loggedIn;
         var drawn = false;
-        try { Flat.Pump();Hotbars.Update(loggedIn && Config.Enabled && !GameGui.GameUiHidden);ui.Draw(loggedIn); drawn = true; }
+        try { using(Metrics.Measure(UiWork.Icons)){Flat.Pump(loggedIn&&Config.Enabled);Buttons.Pump(loggedIn&&Config.Enabled);}using(Metrics.Measure(UiWork.Layouts))Hotbars.Update(loggedIn && Config.Enabled && !GameGui.GameUiHidden);ui.Draw(loggedIn); drawn = true; }
         finally
         {
             GameUi.Ready = drawn && Config.Enabled && !GameGui.GameUiHidden ? ui.Ready : HudReady.None;
             if(!drawn)Hotbars.Release();
-            NativeStyle.Rendered(drawn && loggedIn && Config.Enabled && !GameGui.GameUiHidden);
+            using(Metrics.Measure(UiWork.NativeScan))NativeStyle.Rendered(drawn && loggedIn && Config.Enabled && !GameGui.GameUiHidden);
+            using var visibilityTiming=Metrics.Measure(UiWork.Visibility);
             var hideAll = drawn && loggedIn && Config.Enabled && !Config.ShowOriginalUi;
             if (hideAll)
             {
@@ -152,6 +165,7 @@ public sealed class Plugin : IDalamudPlugin
                 GameUi.SetHide(false, drawn && loggedIn && Config.Enabled);
                 originalChat.SetDesired(drawn && loggedIn && Config.Enabled && Config.ShowChat && Config.HideOriginalChat && ui.ChatVisible);
             }
+            Metrics.EndFrame();
         }
     }
 
@@ -176,10 +190,12 @@ public sealed class Plugin : IDalamudPlugin
         Hotbars.Dispose();
         originalChat.Dispose();
         NativeStyle.Dispose();
-        Flat.Dispose();
+        Redraw.Dispose();Buttons.Dispose();Flat.Dispose();
         GameUi.Dispose();
+        Names.Dispose();
         Chat.ChatMessageUnhandled -= OnChat;
         Chat.ChatMessageHandled -= OnHandledChat;
+        Interface.ActivePluginsChanged -= OnActivePluginsChanged;
         Interface.UiBuilder.Draw -= Draw;
         Interface.UiBuilder.OpenConfigUi -= OpenSettings;
         Interface.UiBuilder.OpenMainUi -= OpenSettings;

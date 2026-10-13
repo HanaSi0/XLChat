@@ -3,7 +3,7 @@
     "Author": "HanaSi0",
     "Name": "XLinUI",
     "InternalName": "XLinUI",
-    "AssemblyVersion": "0.2.0.0",
+    "AssemblyVersion": "0.3.0.0",
     "Description": "给亲友用的 FF14 界面小改造：简洁聊天、图标顶部栏、多热键栏编辑、玻璃背景和自定义字体。大小、颜色和显示内容都可以自己调整，保留原版技能拖放与常用操作。输入 /xlinui 开始设置。",
     "ApplicableVersion": "any",
     "RepoUrl": "https://github.com/HanaSi0/XLinUI",
@@ -20,11 +20,11 @@
     "LoadPriority": 0,
     "Punchline": "给亲友的简洁界面，聊天、顶部栏和热键栏自由调整。",
     "AcceptsFeedback": true,
-    "DownloadLinkInstall": "https://github.com/HanaSi0/XLinUI/releases/download/v0.2.0/XLinUI.zip",
-    "DownloadLinkUpdate": "https://github.com/HanaSi0/XLinUI/releases/download/v0.2.0/XLinUI.zip",
-    "DownloadLinkTesting": "https://github.com/HanaSi0/XLinUI/releases/download/v0.2.0/XLinUI.zip",
+    "DownloadLinkInstall": "https://github.com/HanaSi0/XLinUI/releases/download/v0.3.0/XLinUI.zip",
+    "DownloadLinkUpdate": "https://github.com/HanaSi0/XLinUI/releases/download/v0.3.0/XLinUI.zip",
+    "DownloadLinkTesting": "https://github.com/HanaSi0/XLinUI/releases/download/v0.3.0/XLinUI.zip",
     "IsHide": false,
     "IsTestingExclusive": false,
-    "LastUpdate": 1791887696
+    "LastUpdate": 1791890334
   }
 ]

@@ -8,7 +8,7 @@ using FFXIVClientStructs.FFXIV.Component.GUI;
 using FFXIVClientStructs.FFXIV.Client.UI;
 using FFXIVClientStructs.FFXIV.Client.UI.Agent;
 namespace XLinUI;
-internal sealed record HotbarView(int Index,string Name,Vector2 Position,Vector2 Size,float Scale,bool Visible,string Shape);
+internal readonly record struct HotbarView(int Index,string Name,Vector2 Position,Vector2 Size,float Scale,bool Visible,string Shape);
 // Move/scale whole native addons, preserving every slot component and drag/drop owner.
 internal sealed unsafe class NativeHotbarLayouts : IDisposable
 {
@@ -33,6 +33,7 @@ internal sealed unsafe class NativeHotbarLayouts : IDisposable
     private void UpdateCore(bool active)
     {
         Bars.Clear();if(disposed)return;
+        if(!active){Release();NativeEditorActive=false;return;}
         if(Plugin.Objects.LocalPlayer is null){Release();NativeEditorActive=false;return;}
         var c=Plugin.InstanceConfig;var viewport=ImGuiHelpers.MainViewport.Size;
         var editor=AgentHUDLayout.Instance();NativeEditorActive=editor!=null&&editor->IsAgentActive();
