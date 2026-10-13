@@ -9,10 +9,18 @@ namespace XLinUI;
 [Serializable]
 public sealed class Configuration : IPluginConfiguration
 {
-    public int Version { get; set; } = 3;
+    public int Version { get; set; } = 4;
     public bool SquareHotbars { get; set; } = true;
     public bool SquareMinimap { get; set; } = true;
-    public bool StyleNativeWindows { get; set; }
+    public bool ModernTarget { get; set; } = true;
+    public bool ModernFocus { get; set; } = true;
+    public bool ModernCast { get; set; } = true;
+    public bool ModernStatuses { get; set; } = true;
+    public bool ModernParty { get; set; }
+    public float StatusIconSize { get; set; } = 30;
+    public bool ModernInventory { get; set; } = true;
+    public bool ModernQuests { get; set; } = true;
+    public bool StyleNativeWindows { get; set; } = true;
     [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
     public HashSet<string> ExcludedNativeWindows { get; set; } = [];
     public bool NativeCombatWidgets { get; set; } = true;
@@ -26,7 +34,7 @@ public sealed class Configuration : IPluginConfiguration
     public bool Enabled { get; set; } = true;
     public bool ShowTop { get; set; } = true;
     public bool ShowChat { get; set; } = true;
-    public bool HideOriginalChat { get; set; }
+    public bool HideOriginalChat { get; set; } = true;
     public bool ShowOriginalUi { get; set; } = true;
     public bool ShowStatus { get; set; } = true;
     public bool ShowParty { get; set; } = true;
@@ -49,7 +57,7 @@ public sealed class Configuration : IPluginConfiguration
     public Dictionary<string, bool> TopSections { get; set; } = DefaultTopSections();
     public static readonly Dictionary<string, string> TopLabels = new()
     {
-        ["gamewindows"]="游戏功能", ["effects"]="特效", ["tribes"]="部族", ["online"]="在线状态", ["jobs"]="职业", ["equipment"]="装备", ["currency"]="货币", ["timers"]="雇员/任务情报", ["teleport"]="传送", ["map"]="地图", ["plugins"]="插件收纳", ["commands"]="指令收纳", ["zone"]="区域/地图/天气", ["fps"]="FPS", ["dtr"]="其他插件 DTR", ["sound"]="音量", ["clock"]="LT/ET",
+        ["inventory"]="背包概览", ["quests"]="任务概览", ["gamewindows"]="游戏功能", ["effects"]="特效", ["tribes"]="部族", ["online"]="在线状态", ["jobs"]="职业", ["equipment"]="装备", ["currency"]="货币", ["timers"]="雇员/任务情报", ["teleport"]="传送", ["map"]="地图", ["plugins"]="插件收纳", ["commands"]="指令收纳", ["zone"]="区域/地图/天气", ["fps"]="FPS", ["dtr"]="其他插件 DTR", ["sound"]="音量", ["clock"]="LT/ET",
     };
     private static Dictionary<string, bool> DefaultTopSections()
     {
@@ -58,10 +66,20 @@ public sealed class Configuration : IPluginConfiguration
         return values;
     }
 
+    public void ApplyModernPreset()
+    {
+        Enabled = ShowOriginalUi = NativeCombatWidgets = ShowTop = ShowStatus = ShowChat = true;
+        ModernTarget = ModernFocus = ModernCast = ModernStatuses = ModernInventory = ModernQuests = true;
+        StyleNativeWindows = SquareHotbars = SquareMinimap = HideOriginalChat = true;
+        HideBorders = Glass = Rounded = true; TextOnly = false; Opacity = .88f;
+        // Preserve interaction opt-in, custom channels, toolbar choices and exclusions.
+    }
+
     public void Normalize()
     {
-        Version = 3;
+        Version = 4;
         ExcludedNativeWindows ??= [];
+        StatusIconSize = float.IsFinite(StatusIconSize) ? Math.Clamp(StatusIconSize, 20, 48) : 30;
         TopSections ??= DefaultTopSections();
         foreach (var key in TopLabels.Keys) if (!TopSections.ContainsKey(key)) TopSections[key] = true;
         Opacity = float.IsFinite(Opacity) ? Math.Clamp(Opacity, 0, 1) : .88f;

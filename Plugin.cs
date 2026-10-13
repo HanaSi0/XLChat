@@ -109,7 +109,8 @@ public sealed class Plugin : IDalamudPlugin
         try { ui.Draw(loggedIn); drawn = true; }
         finally
         {
-            NativeStyle.Rendered(drawn && loggedIn && Config.Enabled);
+            GameUi.Ready = drawn && Config.Enabled && !GameGui.GameUiHidden ? ui.Ready : HudReady.None;
+            NativeStyle.Rendered(drawn && loggedIn && Config.Enabled && !GameGui.GameUiHidden);
             var hideAll = drawn && loggedIn && Config.Enabled && !Config.ShowOriginalUi;
             if (hideAll)
             {

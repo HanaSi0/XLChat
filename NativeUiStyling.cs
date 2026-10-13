@@ -71,7 +71,16 @@ internal sealed unsafe class NativeUiStyling : IDisposable
                     AddOutline(name, icon, 0);
             }
         }
-        if (collect && live && visible && c.SquareMinimap && !c.ExcludedNativeWindows.Contains(name) && name == "_NaviMap") AddOutline(name, addon->RootNode, 0);
+        if (name == "_PartyList")
+        {
+            var background = (AtkResNode*)((AddonPartyList*)addon)->BackgroundNineGridNode;
+            if (background != null) Change(addon, background, live && visible && c.StyleNativeWindows && !c.ExcludedNativeWindows.Contains(name), false);
+        }
+        if (collect && live && visible && c.SquareMinimap && !c.ExcludedNativeWindows.Contains(name) && name == "_NaviMap")
+        {
+            var map = (AddonNaviMap*)addon;
+            AddOutline(name, map->MapBase != null ? (AtkResNode*)map->MapBase : addon->RootNode, 0);
+        }
         if (!(live && visible && c.StyleNativeWindows) && !originals.Contains(name)) return;
         // Only style standard Window components, never icons, gauges, list rows or collision nodes.
         var list = addon->UldManager.NodeList;
@@ -109,7 +118,11 @@ internal sealed unsafe class NativeUiStyling : IDisposable
         }
         var change = originals.Change(addon->NameString, (nint)addon, (nint)node, current, desired);
         if (change is { } value)
-        { node->Color.A = value.Alpha; node->MultiplyRed = value.Red; node->MultiplyGreen = value.Green; node->MultiplyBlue = value.Blue; }
+        {
+            if (node->Color.A == value.Alpha && node->MultiplyRed == value.Red && node->MultiplyGreen == value.Green && node->MultiplyBlue == value.Blue) return;
+            node->Color.A = value.Alpha; node->MultiplyRed = value.Red; node->MultiplyGreen = value.Green; node->MultiplyBlue = value.Blue;
+            node->IsDirty = true;
+        }
     }
     private void AddOutline(string name, AtkResNode* node, float radius)
     {

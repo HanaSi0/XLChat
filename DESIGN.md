@@ -50,3 +50,25 @@
 所有新外框使用 ImGui 非交互绘图列表，避免遮挡原生点击。坐标持续读取，不保存第二份热键栏位置；编辑布局仍使用游戏 HUD 布局界面。背景颜色按节点身份保存原值，退出、停止绘制、停用或关闭功能时只向实时枚举的同一节点恢复，PreFinalize 时丢弃失效身份。样式不保存到游戏 HUD 文件。
 
 实际效果审查必须在国服 soil 中完成：测试至少三个可见热键栏（12×1、6×2、1×12），切换 80%/120% 缩放、拖动 HUD、职业切换和主栏翻页；确认拖放、鼠标点击、按键、冷却、提示继续正确。小地图须确认地图标记与缩放操作。原生窗口换肤须分别检查角色、背包、市场、任务、商店、交易和弹出确认；发现背景或文字异常时逐窗排除。云端构建和状态机测试不能证明这些实机检查已通过。
+
+## v0.6.0：主动接口适配与覆盖审查
+
+本轮重新核查 Dalamud `IBattleChara`、`ICharacter`、`ITargetManager`、`IPartyList`、`IStatus` 的当前构建文档，以及以下公开绑定；字段／方法均以 API 15 构建验证，不写死网页偏移：
+
+- [BattleChara](https://github.com/goatcorp/Dalamud/blob/master/Dalamud/Game/ClientState/Objects/Types/BattleChara.cs)：状态列表、读条类型与 ID、当前／总读条时长、可打断标记。
+- [StatusManager](https://github.com/aers/FFXIVClientStructs/blob/main/FFXIVClientStructs/FFXIV/Client/Game/StatusManager.cs)：仅在用户右键时调用 `ExecuteStatusOff`，游戏决定能否取消。不会使用本地 RemoveStatus 伪造效果消失。
+- [AgentHUD](https://github.com/aers/FFXIVClientStructs/blob/main/FFXIVClientStructs/FFXIV/Client/UI/Agent/AgentHUD.cs)：目标原生上下文菜单、主菜单功能可用状态。
+- [InventoryContainer](https://github.com/aers/FFXIVClientStructs/blob/main/FFXIVClientStructs/FFXIV/Client/Game/InventoryContainer.cs)：只读取已加载的 Inventory1–4 容器，复制 ID、数量和 HQ，不缓存原生物品指针。
+- [QuestWork](https://github.com/aers/FFXIVClientStructs/blob/main/FFXIVClientStructs/FFXIV/Application/Network/WorkDefinitions/QuestWork.cs)：已接受普通任务 ID、优先与隐藏标记。不把 Sequence 伪装成完成百分比。
+- [AddonNaviMap](https://github.com/aers/FFXIVClientStructs/blob/main/FFXIVClientStructs/FFXIV/Client/UI/AddonNaviMap.cs)：使用 MapBase 边界，保留原生 Mask 与地图渲染。
+- [AddonPartyList](https://github.com/aers/FFXIVClientStructs/blob/main/FFXIVClientStructs/FFXIV/Client/UI/AddonPartyList.cs)：仅背景装饰换色，不重写其控制、伙伴／NPC、仇恨、准备确认和排序信息。
+
+目标、焦点、自身读条和状态新增真正的 ImGui 面板替代。所有替代使用每帧 readiness 位，完整内容与必要图标成功绘制才隐藏对应的确切原生 addon 名；未认识的 addon 不扩展匹配。自身资源和 DTR 也改用此策略，修复配置已启用但窗口没绘制时仍隐藏原版的问题。异步图标尚未就绪或状态表找不到对应行时保留原版，避免仅显示 ID 时就遮掉有效信息。特殊状态组保持原样。
+
+读条动作按类型解析 Action／Item，不把任何 ID 都当作技能。无效计时或其他类型保留原版读条。状态叠层只在表定义 MaxStacks > 1 时解释 Param，避免把食物／药品参数当叠层。自身状态右键取消需已启用游戏交互；目标和焦点状态没有取消操作。
+
+队伍概览目前可选，保留原生名单。背包与任务是简洁只读概览，保留完整原生操作入口，不以缺少操作的概览隐藏原生窗口。任务目标、商店交易与副本专用机制依旧需要逐功能实现，不能靠隐藏所有原版 UI 宣称已完成现代化。
+
+默认启用现代目标、焦点、读条、自身状态、窗口背景及聊天隐藏。已有保存配置的明确选择保留。现代预设不会打开游戏交互或删除个人分类、顶部选择和排除名单。暂停游戏 HUD 显示时插件 HUD 也暂停；退出角色清除所有新增列表和初次布局导入标记。
+
+实机验收新增：目标／焦点切换与清除，长短读条和可打断提示，永久状态／叠层／图标异步加载／状态取消权限；队伍跨区成员与原生准备确认，背包 HQ／堆叠／四页容量／登录数据未加载，普通任务优先／隐藏标记。云端 48 项测试验证策略与配置，不替代 soil 实机验证。

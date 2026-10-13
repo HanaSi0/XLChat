@@ -50,3 +50,14 @@ appearance.Change("Inventory",1,2,initial,custom);appearance.Forget("Inventory")
 Check(appearance.Change("Inventory",1,2,custom,null)==null,"forget colors before native addon finalization");
 appearance.Change("A",1,2,initial,custom);appearance.Change("A",1,3,initial with {Alpha=0},custom);
 Check(appearance.Change("A",1,3,custom,null)?.Alpha==0 && appearance.Change("A",1,2,custom,null)==initial,"restore separate nodes including originally transparent decorations");
+
+Check(HudReplacementPolicy.ShouldHide("_TargetInfoMainTarget",HudReady.Target) && HudReplacementPolicy.ShouldHide("_TargetInfoBuffDebuff",HudReady.Target),"hide complete target UI only after its replacement draws");
+Check(!HudReplacementPolicy.ShouldHide("_TargetInfo",HudReady.None) && !HudReplacementPolicy.ShouldHide("_FocusTargetInfo",HudReady.Target),"missing or unrelated replacement preserves native HUD");
+Check(HudReplacementPolicy.ShouldHide("_CastBar",HudReady.PlayerCast) && !HudReplacementPolicy.ShouldHide("_CastBar",HudReady.Target),"player casting has independent readiness");
+Check(HudReplacementPolicy.ShouldHide("_StatusAilments",HudReady.Statuses) && !HudReplacementPolicy.ShouldHide("_StatusCustom0",HudReady.Statuses),"standard status groups replaced while custom groups stay untouched");
+Check(!HudReplacementPolicy.ShouldHide("_PartyList",HudReady.Target|HudReady.Statuses),"party remains native unless a full replacement declares readiness");
+Check(HudReplacementPolicy.ShouldHide("_Parameter",HudReady.Resources) && !HudReplacementPolicy.ShouldHide("_Parameter",HudReady.None),"resources stay visible when custom resource window fails");
+Check(HudReplacementPolicy.ShouldHide("_DTR",HudReady.Top) && !HudReplacementPolicy.ShouldHide("_DTR",HudReady.None),"server bar restoration follows actual toolbar rendering");
+Check(HudValues.Ratio(200,100)==1 && HudValues.Ratio(1,0)==0 && HudValues.Ratio(float.NaN,10)==0,"bound HP and cast progress with invalid values");
+Check(HudValues.Duration(59.1f)=="60" && HudValues.Duration(61)=="2m" && HudValues.Duration(0)=="∞","status duration handles seconds minutes and indefinite effects");
+Check(!HudValues.ValidCast(float.NaN,2) && !HudValues.ValidCast(1,0) && HudValues.ValidCast(1,2),"invalid cast data preserves native cast display");

@@ -30,5 +30,15 @@ var migrated=JsonConvert.DeserializeObject<Configuration>(JsonConvert.SerializeO
 if(!migrated.StyleNativeWindows||migrated.SquareMinimap||!migrated.ExcludedNativeWindows.Contains("Inventory"))throw new Exception("Native style roundtrip failed");
 Console.WriteLine("PASS: native style overrides and per-window exclusions persist");
 var old=JsonConvert.DeserializeObject<Configuration>("{\"Version\":2,\"TopSections\":{\"sound\":false},\"ExcludedNativeWindows\":null}")!;old.Normalize();
-if(old.StyleNativeWindows||!old.SquareHotbars||!old.TopSections["gamewindows"]||old.TopSections["sound"]||old.ExcludedNativeWindows is null)throw new Exception("Style migration failed");
-Console.WriteLine("PASS: v2 migration preserves disabled entries and native windows default to original appearance");
+if(!old.StyleNativeWindows||!old.SquareHotbars||!old.TopSections["gamewindows"]||old.TopSections["sound"]||old.ExcludedNativeWindows is null)throw new Exception("Style migration failed");
+Console.WriteLine("PASS: v2 migration preserves disabled entries and new installations enable the modern native window theme");
+
+var modern = new Configuration { NativeInteractions = false, ModernTarget = false, ShowOriginalUi = false };
+modern.TopSections["sound"] = false;modern.ExcludedNativeWindows.Add("Inventory");modern.Channels[0].Name="私人";modern.ApplyModernPreset();
+if(!modern.ModernTarget||!modern.ShowOriginalUi||!modern.ModernStatuses||!modern.HideOriginalChat||!modern.StyleNativeWindows||modern.NativeInteractions||modern.TopSections["sound"]||!modern.ExcludedNativeWindows.Contains("Inventory")||modern.Channels[0].Name!="私人")throw new Exception("Modern preset lost preferences");
+Console.WriteLine("PASS: modern preset preserves interaction opt-in and personal channel/toolbar/exclusion choices");
+modern.StatusIconSize=float.NaN;modern.Normalize();if(modern.StatusIconSize!=30)throw new Exception("Status icon bounds failed");
+Console.WriteLine("PASS: invalid status icon size recovered");
+var customModern=JsonConvert.DeserializeObject<Configuration>("{\"ModernTarget\":false,\"ModernFocus\":false,\"ModernStatuses\":false,\"StyleNativeWindows\":false}")!;customModern.Normalize();
+if(customModern.ModernTarget||customModern.ModernFocus||customModern.ModernStatuses||customModern.StyleNativeWindows)throw new Exception("Explicit module opt-outs overwritten");
+Console.WriteLine("PASS: existing explicit module opt-outs remain disabled on update");

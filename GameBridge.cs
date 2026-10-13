@@ -15,6 +15,44 @@ namespace XLinUI;
 // Uses generated bindings shipped by the active Dalamud installation, never hardcoded addresses.
 internal static unsafe class GameBridge
 {
+    internal static bool MainCommandEnabled(uint id)
+    {
+        var hud = AgentHUD.Instance();
+        return hud != null && hud->IsMainCommandEnabled(id);
+    }
+    internal static void OpenTargetContext(nint address)
+    {
+        var hud = AgentHUD.Instance();
+        if (hud != null && address != 0) hud->OpenContextMenuFromTarget((FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject*)address);
+    }
+    internal static List<AcceptedQuest> ReadAcceptedQuests()
+    {
+        var rows = new List<AcceptedQuest>();
+        var manager = QuestManager.Instance();
+        if (manager == null) return rows;
+        foreach (var quest in manager->NormalQuests)
+            if (quest.QuestId != 0) rows.Add(new AcceptedQuest(quest.QuestId, quest.IsPriority, quest.IsHidden));
+        return rows;
+    }
+    internal static (List<BagSlot> Items, int Capacity, bool Available) ReadBags()
+    {
+        var rows = new List<BagSlot>(); var capacity = 0; var available = true;
+        var manager = InventoryManager.Instance();
+        if (manager == null) return (rows, 0, false);
+        foreach (var type in new[] { InventoryType.Inventory1, InventoryType.Inventory2, InventoryType.Inventory3, InventoryType.Inventory4 })
+        {
+            var container = manager->GetInventoryContainer(type);
+            if (container == null || !container->IsLoaded) { available = false; continue; }
+            capacity += container->Size;
+            for (var i = 0; i < container->Size; i++)
+            {
+                var slot = container->GetInventorySlot(i);
+                if (slot != null && slot->ItemId != 0) rows.Add(new BagSlot(slot->GetBaseItemId(), slot->Quantity, (slot->Flags & InventoryItem.ItemFlags.HighQuality) != 0));
+            }
+        }
+        return (rows, capacity, available);
+    }
+    internal static bool CancelStatus(uint id, uint source) => StatusManager.ExecuteStatusOff(id, source);
     internal static bool UseGeneralAction(uint id)
     {
         var manager = ActionManager.Instance();

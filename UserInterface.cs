@@ -49,20 +49,32 @@ internal sealed partial class UserInterface(Plugin plugin)
         (C.LockWindows ? ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoResize : ImGuiWindowFlags.None);
 
 
-    internal void ClearInput() => draft = "";
+    internal void ClearInput()
+    {
+        draft = search = ""; importedLayouts.Clear();
+        bagSlots.Clear(); bagCapacity = 0; bagAvailable = false; lastInventoryRead = default;
+        acceptedQuests.Clear(); lastQuestRead = default;
+        gearsets.Clear(); currencies.Clear(); currencyRead = default;
+        teleportRows.Clear(); telemetryAvailable = false; lastTelemetry = default;
+        Ready = HudReady.None;
+    }
     internal void Draw(bool loggedIn)
     {
         ChatVisible = false;
+        Ready = HudReady.None;
         using var theme = new Theme(C);
-        if (C.Enabled && loggedIn)
+        if (C.Enabled && loggedIn && !Plugin.GameGui.GameUiHidden)
         {
             DrawNativeOutlines();
+            DrawCombatHud();
             if (C.ShowTop || !C.ShowOriginalUi) DrawTop();
             if (C.ShowStatus) DrawStatus();
             if (C.ShowParty && !C.NativeCombatWidgets) DrawParty();
             if (C.ShowChat) DrawChat();
             // Native hotbars retain all game interactions; the obsolete single-bar mirror is no longer drawn.
             DrawUtilityPanels();
+            if (questsOpen) DrawQuests();
+            if (inventoryOpen) DrawInventory();
             if (gameWindowsOpen) DrawGameWindows();
             if (commandsOpen) DrawCommands();
             if (teleportOpen) DrawTeleports();
@@ -108,10 +120,12 @@ internal sealed partial class UserInterface(Plugin plugin)
             new(mapName, () => OpenGame(16)),
             new($"插件收纳 {Plugin.Interface.InstalledPlugins.Count(p => p.IsLoaded)}", () => Plugin.Interface.OpenPluginInstallerTo(PluginInstallerOpenKind.InstalledPlugins)),
             new("指令收纳", () => commandsOpen = true),
+            new("背包", () => inventoryOpen = true),
+            new("任务", () => questsOpen = true),
             new($"区域 {Plugin.Client.TerritoryType} / 地图 {Plugin.Client.MapId} / 天气 {weather}"),
             new($"FPS {ImGui.GetIO().Framerate:F0}"),
         };
-        var topKeys = new[] { "effects", "tribes", "online", "equipment", "jobs", "timers", "currency", "teleport", "map", "plugins", "commands", "zone", "fps" };
+        var topKeys = new[] { "effects", "tribes", "online", "equipment", "jobs", "timers", "currency", "teleport", "map", "plugins", "commands", "inventory", "quests", "zone", "fps" };
         for (var i = 0; i < items.Count; i++) items[i] = items[i] with { Key = topKeys[i] };
         foreach (var entry in Plugin.Dtr.Entries.Where(e => e.Shown && !e.UserHidden))
         {
@@ -153,6 +167,7 @@ internal sealed partial class UserInterface(Plugin plugin)
         try
         {
             if (!visible) return;
+            Ready |= HudReady.Top;
             var index = 0;
             for (var r = 0; r < rows.Count; r++)
             {
@@ -179,8 +194,10 @@ internal sealed partial class UserInterface(Plugin plugin)
         finally { ImGui.End(); ImGui.PopStyleVar(3); }
     }
 
-    private void OpenGame(uint command)
+    private void OpenGame(uint command, bool forceNative = false)
     {
+        if (!forceNative && command == 4 && C.ModernQuests) { questsOpen = true; return; }
+        if (!forceNative && command == 10 && C.ModernInventory) { inventoryOpen = true; return; }
         C.ShowOriginalUi = true; plugin.Save();
         Native(() => GameBridge.Open(command));
     }
@@ -201,14 +218,15 @@ internal sealed partial class UserInterface(Plugin plugin)
 
     private sealed record TopItem(string Label, System.Action? Click = null, string? Tooltip = null, System.Action? RightClick = null, string? Key = null);
 
-    private void ImportLayout(string key, params string[] names)
+    private void ImportLayout(string key, params string[] names) => ImportLayout(key, null, names);
+    private void ImportLayout(string key, Vector2? sizeOverride, params string[] names)
     {
         if (!C.FollowGameLayout || importedLayouts.Contains(key)) return;
         foreach (var name in names)
             if (plugin.GameUi.Layouts.TryGetValue(name, out var layout))
             {
                 var viewport = ImGuiHelpers.MainViewport;
-                var size = key == "chat" ? new Vector2(C.ChatWidth, C.ChatHeight) * ImGuiHelpers.GlobalScale : new Vector2(330, 180) * ImGuiHelpers.GlobalScale;
+                var size = sizeOverride ?? (key == "chat" ? new Vector2(C.ChatWidth, C.ChatHeight) * ImGuiHelpers.GlobalScale : new Vector2(330, 180) * ImGuiHelpers.GlobalScale);
                 var position = new Vector2(Math.Clamp(layout.X, 0, Math.Max(0, viewport.Size.X - size.X)), Math.Clamp(layout.Y, 0, Math.Max(0, viewport.Size.Y - size.Y)));
                 ImGui.SetNextWindowPos(viewport.Pos + position);
                 importedLayouts.Add(key);
@@ -218,18 +236,19 @@ internal sealed partial class UserInterface(Plugin plugin)
 
     private void DrawStatus()
     {
-        ImGui.SetNextWindowSize(new Vector2(330, 180) * ImGuiHelpers.GlobalScale, ImGuiCond.FirstUseEver);
+        ImGui.SetNextWindowSize(new Vector2(330, 115) * ImGuiHelpers.GlobalScale, ImGuiCond.FirstUseEver);
         ImportLayout("status", "_Parameter", "Parameter");
         var visible = ImGui.Begin("状态###XLinUIStatus", WindowFlags);
         try
         {
             if (!visible || Plugin.Objects.LocalPlayer is not { } player) return;
+            Ready |= HudReady.Resources;
             ImGui.TextColored(new Vector4(C.Tint, 1), player.Name.TextValue);
             ImGui.SameLine(); ImGui.TextDisabled($"Lv.{player.Level}");
-            Resource("HP", player.CurrentHp, player.MaxHp);
+            ThinResource("HP", player.CurrentHp, player.MaxHp, C.Tint);
             if (player.ClassJob.RowId is >= 16 and <= 18) Resource("GP", player.CurrentGp, player.MaxGp);
             else if (player.ClassJob.RowId is >= 8 and <= 15) Resource("CP", player.CurrentCp, player.MaxCp);
-            else Resource("MP", player.CurrentMp, player.MaxMp);
+            else ThinResource("MP", player.CurrentMp, player.MaxMp, new Vector3(.65f, .72f, .9f));
             if (!C.NativeCombatWidgets && Plugin.Targets.Target is ICharacter target)
             {
                 ImGui.Separator();
@@ -417,13 +436,31 @@ internal sealed partial class UserInterface(Plugin plugin)
         {
             if (!visible) return;
             if (ImGui.Button("关闭设置")) SettingsOpen = false;
+            ImGui.SameLine();
+            if (ImGui.Button("应用现代风格预设"))
+            {
+                C.ApplyModernPreset();
+                importedLayouts.Clear(); changed = true;
+            }
+
             ImGui.TextWrapped("/xlinui restore 恢复原版界面。/xlinui off 关闭新面板并恢复原版。技能 UI 固定直角。");
             changed |= Toggle("启用 XLinUI", C.Enabled, v => C.Enabled = v);
             changed |= Toggle("显示原游戏 UI（关闭为实验性全隐藏）", C.ShowOriginalUi, v => C.ShowOriginalUi = v);
-            ImGui.TextWrapped("尚未重做背包、市场、任务对话等窗口。隐藏全部原版 UI 后，可用顶部恢复按钮或 /xlinui restore 返回；打开快捷入口也会先恢复原版。");
+            ImGui.TextWrapped("已提供背包和任务概览；市场、任务对话等复杂操作仍使用原版窗口。隐藏全部原版 UI 后，可用顶部恢复按钮或 /xlinui restore 返回；打开快捷入口也会先恢复原版。");
             changed |= Toggle("游戏原版热键栏与状态组件", C.NativeCombatWidgets, v => C.NativeCombatWidgets = v);
             ImGui.TextWrapped("沿用原版所有热键栏、Buff/Debuff、职业量谱、目标和队伍布局与交互，不重画原版图标。HP/MP 使用简洁条。");
             changed |= Toggle("简洁生命/魔力状态条", C.ShowStatus, v => C.ShowStatus = v);
+            changed |= Toggle("简洁目标面板（替换原版）", C.ModernTarget, v => C.ModernTarget = v);
+            changed |= Toggle("简洁焦点目标（替换原版）", C.ModernFocus, v => C.ModernFocus = v);
+            changed |= Toggle("简洁自身读条（替换原版）", C.ModernCast, v => C.ModernCast = v);
+            changed |= Toggle("简洁任务概览入口", C.ModernQuests, v => C.ModernQuests = v);
+            changed |= Toggle("简洁背包入口（保留原版完整操作）", C.ModernInventory, v => C.ModernInventory = v);
+            changed |= Toggle("简洁增益／减益（替换原版）", C.ModernStatuses, v => C.ModernStatuses = v);
+            changed |= Toggle("简洁队伍概览（保留原版队伍菜单）", C.ModernParty, v => C.ModernParty = v);
+            var iconSize = C.StatusIconSize;
+            if (ImGui.SliderFloat("状态图标大小", ref iconSize, 20, 48, "%.0f")) { C.StatusIconSize = iconSize; changed = true; }
+            ImGui.TextWrapped("目标、焦点、读条与状态只在替代面板成功绘制后隐藏原版。队伍概览暂保留原版名单的上下文菜单、排序与队长操作。右键状态需开启游戏交互，由游戏判定是否可取消。");
+
             if (!C.NativeCombatWidgets) changed |= Toggle("备用队伍面板", C.ShowParty, v => C.ShowParty = v);
             changed |= Toggle("采用读取到的原版布局", C.FollowGameLayout, v => C.FollowGameLayout = v);
             if (ImGui.Button("重新应用已读取布局")) importedLayouts.Clear();

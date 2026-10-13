@@ -27,7 +27,10 @@ internal sealed partial class UserInterface
                 try
                 {
                     var replacement = entry.RowId switch
-                    { 5 => "原版任务情报", 35 => "简洁传送", 66 => "简洁货币", 2 => "装备 / 配装 + 原版角色", _ => C.StyleNativeWindows ? "原版功能 · 标准窗口换肤" : "原版功能" };
+                    { 4 => C.ModernQuests ? "简洁任务概览 + 原版日志" : "原版日志", 10 => C.ModernInventory ? "简洁背包概览 + 原版操作" : "原版背包", 5 => "原版任务情报", 35 => "简洁传送", 66 => "简洁货币", 2 => "装备 / 配装 + 原版角色", _ => C.StyleNativeWindows ? "原版功能 · 标准窗口换肤" : "原版功能" };
+                    var custom = entry.RowId == 35 || entry.RowId == 66 || (entry.RowId == 10 && C.ModernInventory) || (entry.RowId == 4 && C.ModernQuests);
+                    var enabled = custom || GameBridge.MainCommandEnabled(entry.RowId);
+                    ImGui.BeginDisabled(!enabled);
                     if (ImGui.Selectable(label + "##open", false))
                     {
                         switch (entry.RowId)
@@ -37,7 +40,8 @@ internal sealed partial class UserInterface
                             default: OpenGame(entry.RowId); break;
                         }
                     }
-                    ImGui.SameLine(); ImGui.TextDisabled(replacement);
+                    ImGui.EndDisabled();
+                    ImGui.TextDisabled(enabled ? replacement : "当前游戏状态下不可用");
                 }
                 finally { ImGui.PopID(); }
             }

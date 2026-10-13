@@ -12,6 +12,7 @@ internal sealed unsafe class GameUiController : IDisposable
 {
     internal readonly Dictionary<string, GameLayout> Layouts = [];
     internal float GameScale = 1;
+    internal HudReady Ready;
     private readonly ChatVisibilityState state = new();
     private bool hide;
     private long lastDraw;
@@ -46,7 +47,7 @@ internal sealed unsafe class GameUiController : IDisposable
             Apply(addon, live, desired, loggedIn);
 
         }
-        active = live && (hide || Plugin.InstanceConfig.ShowStatus || Plugin.InstanceConfig.ShowTop);
+        active = live && (hide || Plugin.InstanceConfig.ShowStatus || Plugin.InstanceConfig.ShowTop || Ready != HudReady.None);
         if (!loggedIn) Layouts.Clear();
     }
 
@@ -71,7 +72,7 @@ internal sealed unsafe class GameUiController : IDisposable
                 Layouts[name] = new GameLayout(addon->X, addon->Y, addon->Scale, node->Width, node->Height, layout.Visible);
         }
         var config = Plugin.InstanceConfig;
-        var desired = live && GameUiVisibilityPolicy.ShouldHide(name, hideAll, config.NativeCombatWidgets, config.ShowStatus, config.ShowTop, config.SquareHotbars, config.SquareMinimap);
+        var desired = live && (HudReplacementPolicy.ShouldHide(name, Ready) || GameUiVisibilityPolicy.ShouldHide(name, hideAll, config.NativeCombatWidgets, false, false, config.SquareHotbars, config.SquareMinimap));
         if (!desired && !active) return;
         var visible = state.Change(name, (nint)addon, (nint)node, node->IsVisible(), desired);
         if (visible.HasValue) node->ToggleVisibility(visible.Value);
