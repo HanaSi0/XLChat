@@ -105,3 +105,11 @@ if(barCopy.HotbarLayouts.Count!=2||barCopy.HotbarLayouts["_ActionBar"].Scale!=1.
 Console.WriteLine("PASS: multiple native layouts persist independently with invalid geometry recovered");
 if(JsonConvert.DeserializeObject<Configuration>("{}")!.UseHotbarLayouts)throw new Exception("Legacy hotbars automatically overridden");
 Console.WriteLine("PASS: existing installations keep native hotbar layouts until explicitly imported");
+
+if(TopIconPolicy.Find(Array.Empty<Lumina.Excel.Sheets.MainCommand>(),r=>true,r=>r.Icon)!=0)throw new Exception("Empty icon sheet fallback failed");
+Console.WriteLine("PASS: empty Lumina menu sheet uses fallback without dereferencing default row");
+if(TopIconPolicy.Find(new[]{default(Lumina.Excel.Sheets.MainCommand)},r=>false,r=>r.Icon)!=0)throw new Exception("Unmatched menu fallback failed");
+Console.WriteLine("PASS: no matching menu never reads Icon from an unreadable default Lumina row");
+var iconRows=new[]{(Name:"其他菜单",Icon:11),(Name:"角色设置",Icon:22)};
+if(TopIconPolicy.Find(iconRows,r=>r.Name=="角色设置",r=>r.Icon)!=22)throw new Exception("Matched menu icon changed");
+Console.WriteLine("PASS: matching menu retains its actual icon");

@@ -30,11 +30,11 @@ internal sealed partial class UserInterface
         }
         var player = Plugin.Objects.LocalPlayer;
         var map = Plugin.Data.GetExcelSheet<Map>().GetRowOrDefault(Plugin.Client.MapId);
-        var mapName = map?.PlaceName.Value.Name.ToString();
+        var mapName = map is {} currentMap&&currentMap.PlaceName.IsValid?currentMap.PlaceName.Value.Name.ToString():null;
         if (string.IsNullOrWhiteSpace(mapName)) mapName = "地图";
-        var onlineName = player?.OnlineStatus.Value.Name.ToString();
+        var onlineName = player is not null&&player.OnlineStatus.IsValid?player.OnlineStatus.Value.Name.ToString():null;
         if (string.IsNullOrWhiteSpace(onlineName)) onlineName = "在线";
-        var jobName = player?.ClassJob.Value.Name.ToString();
+        var jobName = player is not null&&player.ClassJob.IsValid?player.ClassJob.Value.Name.ToString():null;
         if (string.IsNullOrWhiteSpace(jobName)) jobName = "职业";
         var volumeText = Plugin.GameConfig.System.TryGet("SoundMaster", out uint volume) ? $"音量 {volume}%" : "音量";
         var items = new List<TopItem>
@@ -83,10 +83,20 @@ internal sealed partial class UserInterface
 
     private sealed record TopItem(string Label,System.Action? Click=null,string? Tooltip=null,System.Action? RightClick=null,string? Key=null);
     private readonly Dictionary<string,uint> topIconCache=[];
+    private readonly HashSet<string> topIconFailures=[];
     private uint TopGameIcon(string key)
     {
-        if(key=="jobs")return Plugin.Objects.LocalPlayer is {} p?62100+p.ClassJob.RowId:0;
-        if(key=="online")return Plugin.Objects.LocalPlayer?.OnlineStatus.Value.Icon??0;
+        try{return ResolveTopGameIcon(key);}
+        catch(Exception ex)
+        {
+            if(topIconFailures.Add(key))Plugin.Log.Warning(ex,"读取顶部图标失败，使用内置图标：{Key}",key);
+            return 0;
+        }
+    }
+    private uint ResolveTopGameIcon(string key)
+    {
+        if(key=="jobs")return Plugin.Objects.LocalPlayer is {} p&&p.ClassJob.RowId>0&&p.ClassJob.IsValid?62100+p.ClassJob.RowId:0;
+        if(key=="online")return Plugin.Objects.LocalPlayer is {} onlinePlayer&&onlinePlayer.OnlineStatus.IsValid?onlinePlayer.OnlineStatus.Value.Icon:0;
         if(topIconCache.TryGetValue(key,out var cached))return cached;
         var command=key switch {"equipment"=>2u,"timers"=>5u,"currency"=>66u,"teleport"=>35u,"map" or "zone"=>16u,"inventory"=>10u,"quests"=>4u,_=>0u};
         uint icon=command==0?0:(uint)Math.Max(0,Plugin.Data.GetExcelSheet<MainCommand>().GetRowOrDefault(command)?.Icon??0);
@@ -94,8 +104,7 @@ internal sealed partial class UserInterface
         if(key is "tribes" or "effects")
         {
             var names=key=="tribes"?new[]{"部族","蛮族","Tribal","Tribe"}:new[]{"角色设置","Character Configuration"};
-            var match=Plugin.Data.GetExcelSheet<MainCommand>().FirstOrDefault(r=>names.Any(n=>r.Name.ToString().Contains(n,StringComparison.OrdinalIgnoreCase)));
-            icon=(uint)Math.Max(0,match.Icon);
+            icon=TopIconPolicy.Find(Plugin.Data.GetExcelSheet<MainCommand>(),r=>names.Any(n=>r.Name.ToString().Contains(n,StringComparison.OrdinalIgnoreCase)),r=>r.Icon);
         }
         topIconCache[key]=icon;return icon;
     }

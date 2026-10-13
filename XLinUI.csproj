@@ -1,6 +1,6 @@
 <Project Sdk="Dalamud.NET.Sdk/15.0.0">
   <PropertyGroup>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <Author>HanaSi0</Author>
     <Name>XLinUI</Name>
     <Punchline>给亲友的简洁界面，聊天、顶部栏和热键栏自由调整。</Punchline>

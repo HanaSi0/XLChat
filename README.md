@@ -8,7 +8,7 @@
 
 ## 安装
 
-适用于 **国服 soil XIVLauncher / Dalamud API 15**，当前版本 **0.1.0**。
+适用于 **国服 soil XIVLauncher / Dalamud API 15**，当前版本 **0.1.1**。
 
 1. 打开 Dalamud 设置 → 实验性 → 自定义插件仓库。
 2. 添加下面的地址，保存并刷新插件列表。
@@ -18,9 +18,9 @@
 https://raw.githubusercontent.com/HanaSi0/XLinUI/main/pluginmaster.json
 ```
 
-[手动下载](https://github.com/HanaSi0/XLinUI/releases/download/v0.1.0/XLinUI.zip) · [版本页面](https://github.com/HanaSi0/XLinUI/releases/tag/v0.1.0)
+[手动下载](https://github.com/HanaSi0/XLinUI/releases/download/v0.1.1/XLinUI.zip) · [版本页面](https://github.com/HanaSi0/XLinUI/releases/tag/v0.1.1)
 
-以前用本地开发路径加载过旧版的亲友，先停用旧插件、移除旧 DLL 路径，再安装这个版本。旧高版本不会自动降级到 0.1.0。
+以前用本地开发路径加载过旧版的亲友，先停用旧插件、移除旧 DLL 路径，再安装这个版本。旧高版本不会自动降级。已经通过仓库安装的亲友，刷新列表后更新即可。
 
 ## 可以调整什么
 
