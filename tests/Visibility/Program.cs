@@ -1,3 +1,4 @@
+using System.Linq;
 using System;
 using XLinUI;
 var s=new ChatVisibilityState();
@@ -106,3 +107,15 @@ Check(System.Linq.Enumerable.SequenceEqual(ImageEffects.Blur(solid,2,1,0),solid)
 var transparent=ImageEffects.Blur(new byte[]{255,0,0,0,0,0,255,255},2,1,1);
 Check(transparent[0]==0&&transparent[4]==0&&transparent[2]>240,"premultiplied blur avoids transparent color bleed");
 try{ImageEffects.Pack(new byte[4],2,1,8);Check(false,"invalid readback must reject");}catch(ArgumentException){Check(true,"reject incomplete readback");}
+
+var top=TopBarLayout.Arrange(1000,8,new float[]{90,90,90},new float[]{100,100});
+var ls=System.Linq.Enumerable.Where(top.Slots,s=>!s.Right).ToArray();var rs=System.Linq.Enumerable.Where(top.Slots,s=>s.Right).ToArray();
+Check(ls.Length==3&&Math.Abs(ls[0].Width-ls[2].Width)<.01f,"shortcut cells distribute evenly");
+Check(Math.Abs(rs[^1].X+rs[^1].Width-1000)<.01f&&ls[^1].X+ls[^1].Width<rs[0].X,"pinned information is right aligned without overlap");
+var narrow=TopBarLayout.Arrange(320,8,new float[]{180,100,100,200},new float[]{150,180,90});
+Check(narrow.Rows>1&&narrow.Slots.Count==7&&narrow.Slots.All(s=>s.X>=0&&s.X+s.Width<=320.01f),"narrow viewports wrap all entries within bounds");
+Check(narrow.Slots.GroupBy(s=>s.Row).All(g=>g.OrderBy(s=>s.X).Zip(g.OrderBy(s=>s.X).Skip(1)).All(p=>p.First.X+p.First.Width<=p.Second.X+.01f)),"wrapped shortcut and pinned rows never overlap");
+var unpinned=TopBarLayout.Arrange(500,8,new float[]{80,80},Array.Empty<float>());
+Check(Math.Abs(unpinned.Slots[^1].X+unpinned.Slots[^1].Width-500)<.01f,"shortcuts use full width when pinned items hidden");
+var rightOnly=TopBarLayout.Arrange(500,8,Array.Empty<float>(),new float[]{80,80});
+Check(rightOnly.Slots[0].X>300&&rightOnly.Rows==1,"right only toolbar retains right alignment");

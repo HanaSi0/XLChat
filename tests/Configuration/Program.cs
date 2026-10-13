@@ -85,3 +85,10 @@ if(assetCopy.BackgroundFile!=assetConfig.BackgroundFile||assetCopy.FontFile!=ass
 Console.WriteLine("PASS: local asset paths font and material colors persist");
 if(JsonConvert.DeserializeObject<Configuration>("{}")!.Material!=0)throw new Exception("Legacy material changed unexpectedly");
 Console.WriteLine("PASS: upgrades keep previous transparent material by default");
+
+var topConfig=new Configuration{TopIconSize=float.NaN,TopGap=-1,TopMaxLabelWidth=9999};topConfig.TopSections["currency"]=false;topConfig.TopPinned["currency"]=true;topConfig.TopPinned["map"]=true;
+var topCopy=JsonConvert.DeserializeObject<Configuration>(JsonConvert.SerializeObject(topConfig))!;topCopy.Normalize();
+if(topCopy.TopSections["currency"]||!topCopy.TopPinned["currency"]||!topCopy.TopPinned["map"]||topCopy.TopIconSize!=20||topCopy.TopGap!=0||topCopy.TopMaxLabelWidth!=300)throw new Exception("Top customization persistence failed");
+Console.WriteLine("PASS: visibility and right pinning remain independent with bounded toolbar dimensions");
+if(!JsonConvert.DeserializeObject<Configuration>("{}")!.TopPinned["clock"])throw new Exception("Default pinned information missing");
+Console.WriteLine("PASS: legacy configuration receives default right pinned information");

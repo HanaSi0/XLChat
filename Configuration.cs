@@ -78,6 +78,13 @@ public sealed class Configuration : IPluginConfiguration
     public bool ModernCast { get; set; } = true;
     public bool ModernStatuses { get; set; } = true;
     public bool ModernParty { get; set; }
+    public bool TopIcons { get; set; } = true;
+    public float TopIconSize { get; set; } = 20;
+    public float TopGap { get; set; } = 8;
+    public float TopRowPadding { get; set; } = 5;
+    public float TopMaxLabelWidth { get; set; } = 180;
+    [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
+    public Dictionary<string,bool> TopPinned { get; set; } = new() { ["currency"]=true,["equipment"]=true,["fps"]=true,["sound"]=true,["clock"]=true };
     public float StatusIconSize { get; set; } = 30;
     public bool ModernInventory { get; set; } = true;
     public bool ModernQuests { get; set; } = true;
@@ -118,7 +125,7 @@ public sealed class Configuration : IPluginConfiguration
     public Dictionary<string, bool> TopSections { get; set; } = DefaultTopSections();
     public static readonly Dictionary<string, string> TopLabels = new()
     {
-        ["inventory"]="背包概览", ["quests"]="任务概览", ["gamewindows"]="游戏功能", ["effects"]="特效", ["tribes"]="部族", ["online"]="在线状态", ["jobs"]="职业", ["equipment"]="装备", ["currency"]="货币", ["timers"]="雇员/任务情报", ["teleport"]="传送", ["map"]="地图", ["plugins"]="插件收纳", ["commands"]="指令收纳", ["zone"]="区域/地图/天气", ["fps"]="FPS", ["dtr"]="其他插件 DTR", ["sound"]="音量", ["clock"]="LT/ET",
+        ["lock"]="布局锁定", ["settings"]="设置", ["original"]="原版 UI 开关", ["inventory"]="背包概览", ["quests"]="任务概览", ["gamewindows"]="游戏功能", ["effects"]="特效", ["tribes"]="部族", ["online"]="在线状态", ["jobs"]="职业", ["equipment"]="装备", ["currency"]="货币", ["timers"]="雇员/任务情报", ["teleport"]="传送", ["map"]="地图", ["plugins"]="插件收纳", ["commands"]="指令收纳", ["zone"]="区域/地图/天气", ["fps"]="FPS", ["dtr"]="其他插件 DTR", ["sound"]="音量", ["clock"]="LT/ET",
     };
     private static Dictionary<string, bool> DefaultTopSections()
     {
@@ -180,6 +187,8 @@ public sealed class Configuration : IPluginConfiguration
         HudFontScale = float.IsFinite(HudFontScale) ? Math.Clamp(HudFontScale, .8f, 1.6f) : 1.05f;
         ExcludedNativeWindows ??= [];
         StatusIconSize = float.IsFinite(StatusIconSize) ? Math.Clamp(StatusIconSize, 20, 48) : 30;
+        TopIconSize=Bound(TopIconSize,14,32,20);TopGap=Bound(TopGap,0,24,8);TopRowPadding=Bound(TopRowPadding,2,14,5);TopMaxLabelWidth=Bound(TopMaxLabelWidth,60,300,180);
+        TopPinned??=new() { ["currency"]=true,["equipment"]=true,["fps"]=true,["sound"]=true,["clock"]=true };
         TopSections ??= DefaultTopSections();
         foreach (var key in TopLabels.Keys) if (!TopSections.ContainsKey(key)) TopSections[key] = true;
         Opacity = float.IsFinite(Opacity) ? Math.Clamp(Opacity, 0, 1) : .88f;

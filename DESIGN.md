@@ -113,3 +113,12 @@ AppearanceAssets 拥有图片、玻璃纹理、独立托管字体图集和文件
 玻璃用 ITextureProvider.CreateFromImGuiViewportAsync(TakeBeforeImGuiRender=true, AutoUpdate=false) 采样主视口，避免插件界面反馈；使用 ITextureReadbackProvider 公开接口转换 RGBA8、缩小到宽 480 后进行三次可分离 box blur。读回 Pitch 可以有行填充，先打包连续行；透明图片采用预乘 alpha 模糊避免透明 RGB 污染。每次仅一个 capture task，频率最高 4 Hz；退出/关闭时取消并释放未完成任务产物。采样不写磁盘、不传网络，不采用 DirectX 私有挂钩。辅助视口回退颜色背景。
 
 背景绘制在各 XLinUI 根窗口内容前，圆角图像与填充在窗口剪裁矩形内；聊天独立背景或 text-only 可覆盖全局素材。透明背景与原版文字样式继续独立。云中完成 API 15 编译和 87 项策略/配置/模糊测试，无法实机证明 soil 画面捕获兼容性或字体渲染效果。
+
+
+## v0.10.0 顶部栏
+
+TopBar 提取原有交互、DTR 自动入口和遥测；图标来自 MainCommand、Item（Gil）、OnlineStatus 和职业图标。没有对应游戏资源的功能使用官方 FontAwesome 字体，原生图标未就绪也回退。图标不因仅文字背景模式而消失，可由顶部独立开关控制。
+
+TopBarLayout 为纯托管布局函数，右侧最多使用可用宽度 48%，各右侧行独立靠右；余下宽度的快捷入口以等宽单元分配，两个区域独立换行。名称宽度有界，按 Unicode 文本元素截断并提供全文 tooltip，保留左／右键动作。显示开关与右侧常驻字典独立持久化；隐藏原版时设置／恢复入口不受关闭开关影响。
+
+新增 6 项等宽、靠右、窄屏换行、不重叠及空组布局测试，2 项配置测试，总计 95 项通过。浏览器预览覆盖显示开关、图标开关、640 像素边界；云环境不能验证 soil 图标或输入渲染。

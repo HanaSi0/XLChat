@@ -87,119 +87,6 @@ internal sealed partial class UserInterface(Plugin plugin)
         Appearance.DrawDialog();
     }
 
-    private void DrawTop()
-    {
-        if ((DateTime.UtcNow - lastTelemetry).TotalSeconds >= 1)
-        {
-            try
-            {
-                (gil, weather, serverTime) = GameBridge.ReadTopData();
-                var equipment = GameBridge.ReadInventory(FFXIVClientStructs.FFXIV.Client.Game.InventoryType.EquippedItems);
-                minimumDurability = equipment.Count == 0 ? 0 : equipment.Min(i => i.Condition);
-                maximumSpiritbond = equipment.Count == 0 ? 0 : equipment.Max(i => i.Spiritbond);
-                telemetryAvailable = true;
-            }
-            catch (Exception ex) { Plugin.Log.Debug(ex, "顶部状态暂不可用"); }
-            lastTelemetry = DateTime.UtcNow;
-        }
-        var player = Plugin.Objects.LocalPlayer;
-        var map = Plugin.Data.GetExcelSheet<Map>().GetRowOrDefault(Plugin.Client.MapId);
-        var mapName = map?.PlaceName.Value.Name.ToString();
-        if (string.IsNullOrWhiteSpace(mapName)) mapName = "地图";
-        var onlineName = player?.OnlineStatus.Value.Name.ToString();
-        if (string.IsNullOrWhiteSpace(onlineName)) onlineName = "在线";
-        var jobName = player?.ClassJob.Value.Name.ToString();
-        if (string.IsNullOrWhiteSpace(jobName)) jobName = "职业";
-        var volumeText = Plugin.GameConfig.System.TryGet("SoundMaster", out uint volume) ? $"音量 {volume}%" : "音量";
-        var items = new List<TopItem>
-        {
-            new("特效", () => effectsOpen = !effectsOpen),
-            new("部族", () => tribesOpen = !tribesOpen),
-            new(onlineName, () => onlineOpen = !onlineOpen, "左键：在线状态；右键：个人信息", OpenPersonalInfo),
-
-            new(telemetryAvailable ? $"{minimumDurability:F0}% / {maximumSpiritbond:F0}%" : "装备", () => equipmentOpen = !equipmentOpen, "最低装备耐久／最高装备精炼度；右键打开修理", () => OpenAction(6)),
-            new(jobName, () => { jobsOpen = !jobsOpen; if (jobsOpen) gearsets = GameBridge.ReadGearsets(); }),
-            new("雇员", () => OpenGame(5), "打开游戏内任务情报"),
-            new(telemetryAvailable ? $"金币 {gil:N0}" : "金币 --", () => currencyOpen = !currencyOpen, "左键：货币；右键：背包", () => OpenGame(10)),
-            new("传送面板", () => { teleportOpen = true; RefreshTeleports(); }),
-            new(mapName, () => OpenGame(16)),
-            new($"插件收纳 {Plugin.Interface.InstalledPlugins.Count(p => p.IsLoaded)}", () => Plugin.Interface.OpenPluginInstallerTo(PluginInstallerOpenKind.InstalledPlugins)),
-            new("指令收纳", () => commandsOpen = true),
-            new("背包", () => inventoryOpen = true),
-            new("任务", () => questsOpen = true),
-            new($"区域 {Plugin.Client.TerritoryType} / 地图 {Plugin.Client.MapId} / 天气 {weather}"),
-            new($"FPS {ImGui.GetIO().Framerate:F0}"),
-        };
-        var topKeys = new[] { "effects", "tribes", "online", "equipment", "jobs", "timers", "currency", "teleport", "map", "plugins", "commands", "inventory", "quests", "zone", "fps" };
-        for (var i = 0; i < items.Count; i++) items[i] = items[i] with { Key = topKeys[i] };
-        foreach (var entry in Plugin.Dtr.Entries.Where(e => e.Shown && !e.UserHidden))
-        {
-            var current = entry;
-            var label = current.Text?.TextValue;
-            if (string.IsNullOrWhiteSpace(label)) label = current.Title;
-            items.Add(new TopItem(label,
-                current.HasClickAction ? () => InvokeDtr(current, MouseClickType.Left) : null,
-                current.Tooltip?.TextValue,
-                current.HasClickAction ? () => InvokeDtr(current, MouseClickType.Right) : null, "dtr"));
-        }
-        var et = TimeSpan.FromSeconds(serverTime * (3600.0 / 175));
-        items.AddRange([
-            new TopItem(volumeText, () => volumeOpen = !volumeOpen, Key: "sound"),
-            new TopItem($"LT {DateTime.Now:HH:mm} / ET {et.Hours:00}:{et.Minutes:00}", Key: "clock"),
-            new TopItem(C.LockWindows ? "解锁布局" : "锁定布局", () => { C.LockWindows = !C.LockWindows; plugin.Save(); }),
-            new TopItem("游戏功能", () => gameWindowsOpen = !gameWindowsOpen, Key: "gamewindows"),
-            new TopItem("设置", () => SettingsOpen = true),
-            new TopItem(C.ShowOriginalUi ? "隐藏原版 UI" : "恢复原版 UI", () => { C.ShowOriginalUi = !C.ShowOriginalUi; plugin.Save(); }),
-        ]);
-        items.RemoveAll(item => item.Key is not null && !C.TopSections.GetValueOrDefault(item.Key, true));
-        var scale = ImGuiHelpers.GlobalScale;
-        var viewport = ImGuiHelpers.MainViewport;
-        var available = Math.Max(100, viewport.Size.X - 24 * scale);
-        var rows = new List<List<TopItem>> { new() };
-        var widths = new List<float> { 0 };
-        foreach (var item in items)
-        {
-            var width = ImGui.CalcTextSize(item.Label).X + 16 * scale;
-            if (widths[^1] + width > available && rows[^1].Count > 0) { rows.Add([]); widths.Add(0); }
-            rows[^1].Add(item); widths[^1] += width;
-        }
-        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(8, 5) * scale);
-        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(4, 2) * scale);
-        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(8, 4) * scale);
-        ImGui.SetNextWindowPos(viewport.Pos);
-        ImGui.SetNextWindowSize(new Vector2(viewport.Size.X, rows.Count * (ImGui.GetFontSize() + 8 * scale) + 10 * scale));
-        var visible = ImGui.Begin("##XLinUITop", ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoSavedSettings);
-        if(visible)Appearance.DrawBackground();
-        try
-        {
-            if (!visible) return;
-            Ready |= HudReady.Top;
-            var index = 0;
-            for (var r = 0; r < rows.Count; r++)
-            {
-                ImGui.SetCursorPosX(Math.Max(8 * scale, (viewport.Size.X - widths[r]) / 2));
-                for (var itemIndex = 0; itemIndex < rows[r].Count; itemIndex++)
-                {
-                    var item = rows[r][itemIndex];
-                    ImGui.PushID(index++);
-                    if (item.Click is not null)
-                    {
-                        if (ReadableText.SmallButton(item.Label)) item.Click();
-                    }
-                    else { ImGui.AlignTextToFramePadding(); ReadableText.TextUnformatted(item.Label); }
-                    if (ImGui.IsItemHovered())
-                    {
-                        if (!string.IsNullOrEmpty(item.Tooltip)) ImGui.SetTooltip(item.Tooltip);
-                        if (item.RightClick is not null && ImGui.IsMouseClicked(ImGuiMouseButton.Right)) item.RightClick();
-                    }
-                    ImGui.PopID();
-                    if (itemIndex < rows[r].Count - 1) ImGui.SameLine();
-                }
-            }
-        }
-        finally { ImGui.End(); ImGui.PopStyleVar(3); }
-    }
-
     private void OpenGame(uint command, bool forceNative = false)
     {
         if (!forceNative && command == 4 && C.ModernQuests) { questsOpen = true; return; }
@@ -222,7 +109,6 @@ internal sealed partial class UserInterface(Plugin plugin)
         catch (Exception ex) { Plugin.Log.Error(ex, "DTR 插件入口调用失败：{Title}", entry.Title); }
     }
 
-    private sealed record TopItem(string Label, System.Action? Click = null, string? Tooltip = null, System.Action? RightClick = null, string? Key = null);
 
     private void ImportLayout(string key, params string[] names) => ImportLayout(key, null, names);
     private void ImportLayout(string key, Vector2? sizeOverride, params string[] names)
@@ -376,7 +262,7 @@ internal sealed partial class UserInterface(Plugin plugin)
                     if (ImGui.SliderFloat("状态图标大小", ref iconSize, 20, 48, "%.0f")) { C.StatusIconSize = iconSize; changed = true; }
 
                     if (!C.NativeCombatWidgets) changed |= Toggle("备用队伍面板", C.ShowParty, v => C.ShowParty = v);
-                    changed |= Toggle("居中顶部状态栏", C.ShowTop, v => C.ShowTop = v);
+                    changed |= Toggle("顶部快捷与状态栏", C.ShowTop, v => C.ShowTop = v);
                     changed |= Toggle("启用游戏交互", C.NativeInteractions, v => C.NativeInteractions = v);
                     }
                     finally { ImGui.EndTabItem(); }
@@ -393,8 +279,20 @@ internal sealed partial class UserInterface(Plugin plugin)
                 {
                     try
                     {
+                    changed |= Toggle("显示入口图标",C.TopIcons,v=>C.TopIcons=v);
+                    ChatSlider("顶部图标大小",C.TopIconSize,14,32,v=>C.TopIconSize=v,ref changed);
+                    ChatSlider("项目间距",C.TopGap,0,24,v=>C.TopGap=v,ref changed);
+                    ChatSlider("行内上下留白",C.TopRowPadding,2,14,v=>C.TopRowPadding=v,ref changed);
+                    ChatSlider("名称最大宽度（超长显示省略号）",C.TopMaxLabelWidth,60,300,v=>C.TopMaxLabelWidth=v,ref changed);
+                    ReadableText.TextWrapped("快捷入口均匀分布，勾选右侧常驻的项目独立靠右；窄屏自动分行，悬停显示完整名称。常驻项目仍可取消显示。隐藏原版 UI 时保留设置与恢复入口。");
                     foreach (var entry in Configuration.TopLabels)
-                        changed |= Toggle(entry.Value, C.TopSections.GetValueOrDefault(entry.Key, true), v => C.TopSections[entry.Key] = v);
+                    {
+                        ImGui.PushID(entry.Key);
+                        changed |= Toggle("显示："+entry.Value, C.TopSections.GetValueOrDefault(entry.Key, true), v => C.TopSections[entry.Key] = v);
+                        ImGui.SameLine();
+                        changed |= Toggle("右侧常驻", C.TopPinned.GetValueOrDefault(entry.Key,false),v=>C.TopPinned[entry.Key]=v);
+                        ImGui.PopID();
+                    }
                     }
                     finally { ImGui.EndTabItem(); }
                 }
