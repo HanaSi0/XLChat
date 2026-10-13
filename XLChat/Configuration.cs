@@ -68,6 +68,7 @@ public class Configuration : IPluginConfiguration
     public bool HideSameTimestamps;
     public bool ShowNoviceNetwork;
     public bool SidebarTabView = true;
+    public float SidebarWidth = 160;
     public bool ModernSidebarInitialized;
     public bool PrintChangelog = false;
     public bool OnlyPreviewIf;
@@ -166,6 +167,7 @@ public class Configuration : IPluginConfiguration
         HideSameTimestamps = other.HideSameTimestamps;
         ShowNoviceNetwork = other.ShowNoviceNetwork;
         SidebarTabView = other.SidebarTabView;
+        SidebarWidth = other.SidebarWidth;
         ModernSidebarInitialized = other.ModernSidebarInitialized;
         PrintChangelog = other.PrintChangelog;
         OnlyPreviewIf = other.OnlyPreviewIf;

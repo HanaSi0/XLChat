@@ -53,6 +53,7 @@ public partial class ChatLog : Window, IChatWindow
 
         Size = new Vector2(500, 250);
         SizeCondition = ImGuiCond.FirstUseEver;
+        SizeConstraints = new WindowSizeConstraints { MinimumSize = new Vector2(360, 220), MaximumSize = new Vector2(float.MaxValue, float.MaxValue) };
 
         PositionCondition = ImGuiCond.Always;
 
@@ -898,12 +899,15 @@ public partial class ChatLog : Window, IChatWindow
     private void DrawTabSidebar()
     {
         var currentTab = -1;
-        using var tabTable = ImRaii.Table("tabs-table", 2, ImGuiTableFlags.SizingStretchProp | ImGuiTableFlags.Resizable);
+        var scale = ImGuiHelpers.GlobalScale;
+        var sidebarWidth = ClampSidebarWidth(Plugin.Config.SidebarWidth, ImGui.GetContentRegionAvail().X / scale);
+        using var tabTable = ImRaii.Table("modern-sidebar", 3, ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.NoSavedSettings);
         if (!tabTable.Success)
             return;
 
-        ImGui.TableSetupColumn("tabs", ImGuiTableColumnFlags.WidthStretch, 1);
-        ImGui.TableSetupColumn("chat", ImGuiTableColumnFlags.WidthStretch, 4);
+        ImGui.TableSetupColumn("tabs", ImGuiTableColumnFlags.WidthFixed, sidebarWidth * scale);
+        ImGui.TableSetupColumn("splitter", ImGuiTableColumnFlags.WidthFixed, 6 * scale);
+        ImGui.TableSetupColumn("chat", ImGuiTableColumnFlags.WidthStretch);
 
         ImGui.TableNextColumn();
 
@@ -918,7 +922,6 @@ public partial class ChatLog : Window, IChatWindow
                 ImGui.TextDisabled("聊天页面");
                 var previousTab = Plugin.CurrentTab;
                 using var rowStyle = ImRaii.PushStyle(ImGuiStyleVar.ItemSpacing, new Vector2(8, 7));
-                using var selectedStyle = ImRaii.PushColor(ImGuiCol.Header, new Vector4(.22f, .40f, .65f, .65f));
                 for (var tabI = 0; tabI < Plugin.Config.Tabs.Count; tabI++)
                 {
                     var tab = Plugin.Config.Tabs[tabI];
@@ -927,7 +930,7 @@ public partial class ChatLog : Window, IChatWindow
 
                     var unread = tabI == Plugin.LastTab || tab.UnreadMode == UnreadMode.None || tab.Unread == 0 ? "" : $" ({tab.Unread})";
                     var label = tab.Channel == InputChannel.Tell && tab.TellTarget.IsSet() ? $"私聊 · {tab.Name}" : tab.Name;
-                    var clicked = ImGui.Selectable($"{label}{unread}###log-tab-{tabI}", Plugin.LastTab == tabI || Plugin.WantedTab == tabI, ImGuiSelectableFlags.None, new Vector2(0, ImGui.GetTextLineHeight() + 12));
+                    var clicked = DrawSidebarPage(label, unread, tabI, Plugin.LastTab == tabI || Plugin.WantedTab == tabI);
                     DrawTabContextMenu(tab, tabI);
 
                     if (!clicked && Plugin.WantedTab != tabI)
@@ -942,6 +945,12 @@ public partial class ChatLog : Window, IChatWindow
             }
         }
 
+        ImGui.TableNextColumn();
+        ImGui.InvisibleButton("sidebar-resize", new Vector2(6 * scale, Math.Max(1, childHeight)));
+        if (ImGui.IsItemHovered()) ImGuiUtil.Tooltip("拖动调整侧栏宽度");
+        if (ImGui.IsItemActive())
+            Plugin.Config.SidebarWidth = ClampSidebarWidth(sidebarWidth + ImGui.GetIO().MouseDelta.X / scale, ImGui.GetWindowSize().X / scale - 24);
+        if (ImGui.IsItemDeactivated()) Plugin.SaveConfig();
         ImGui.TableNextColumn();
 
         if (currentTab == -1 && Plugin.LastTab < Plugin.Config.Tabs.Count)
