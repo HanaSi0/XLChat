@@ -1,10 +1,10 @@
 <Project Sdk="Dalamud.NET.Sdk/15.0.0">
   <PropertyGroup>
-    <Version>0.11.1</Version>
+    <Version>0.1.0</Version>
     <Author>HanaSi0</Author>
     <Name>XLinUI</Name>
-    <Punchline>现代目标、读条、状态、聊天和统一窗口主题。</Punchline>
-    <Description>个人现代 UI，支持独立模块开关、聊天分类、方角技能栏、圆角/直角、背景透明度和自定义色调。可读取原版布局并选择显示原版界面。</Description>
+    <Punchline>可自定义聊天、图标顶部栏与多热键栏布局。</Punchline>
+    <Description>个人现代 UI：可编辑聊天、图标顶部栏、多热键栏与 Shift 网格吸附、本机背景和字体导入、模糊玻璃、简洁战斗面板；各模块独立开关并可保留原版界面。</Description>
     <RepoUrl>https://github.com/HanaSi0/XLinUI</RepoUrl>
     <Tags>ui;chat;hotbar;personal</Tags>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>

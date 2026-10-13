@@ -5,7 +5,7 @@ on:
       tag:
         description: Existing draft release tag
         required: true
-        default: v0.11.1
+        default: v0.1.0
 permissions:
   contents: write
 concurrency:
@@ -17,7 +17,9 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
       - name: Check package hashes
-        run: sha256sum -c SHA256SUMS.txt
+        run: |
+          sha256sum -c SHA256SUMS.txt
+          python3 tools/repository.py --check
       - name: Upload packages and publish existing draft
         env:
           GH_TOKEN: ${{ github.token }}
@@ -26,4 +28,4 @@ jobs:
         run: |
           gh release view "$RELEASE_TAG" --json isDraft --jq '.isDraft' | grep -qx true
           gh release upload "$RELEASE_TAG" XLinUI.zip XLinUI-source.zip SHA256SUMS.txt --clobber
-          gh release edit "$RELEASE_TAG" --draft=false --prerelease
+          gh release edit "$RELEASE_TAG" --draft=false --prerelease=false --latest
