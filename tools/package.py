@@ -13,7 +13,7 @@ with zipfile.ZipFile(built/'XLChat/latest.zip') as incoming,zipfile.ZipFile(rele
     for name in incoming.namelist():
         assert not PurePosixPath(name).is_absolute() and '..' not in PurePosixPath(name).parts
         archive.writestr(name,incoming.read(name))
-    for name in ['LICENCE','COPYRIGHT']:
+    for name in ['LICENCE','COPYRIGHT','README.md']:
         archive.write(root/name,name)
 with zipfile.ZipFile(release) as archive:
     assert archive.testzip() is None
@@ -23,6 +23,6 @@ with zipfile.ZipFile(release) as archive:
     assert archive.read('XLChat.dll')==(built/'XLChat.dll').read_bytes()
     required=['Microsoft.Data.Sqlite.dll','MessagePack.dll','Pidgin.dll','StbImageSharp.dll','SQLitePCLRaw.batteries_v2.dll','SQLitePCLRaw.core.dll','SQLitePCLRaw.provider.e_sqlite3.dll','WatsonWebserver.Lite.dll','SharedEmoteList.json','runtimes/win-x64/native/e_sqlite3.dll']
     assert all(name in archive.namelist() for name in required),'Missing Windows dependency'
-    assert not any('XLinUI' in name or 'ChatTwo.dll' in name or 'README' in name for name in archive.namelist())
+    assert not any('XLinUI' in name or 'ChatTwo.dll' in name for name in archive.namelist())
 (dist/'SHA256SUMS.txt').write_text(hashlib.sha256(release.read_bytes()).hexdigest()+'  XLChat.zip\n')
 print('XLChat.zip',release.stat().st_size,'bytes; main DLL, metadata and Windows dependencies verified')
