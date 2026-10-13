@@ -193,7 +193,7 @@ internal sealed partial class UserInterface
         if(chatCacheRevision!=plugin.HistoryRevision||chatCacheChannel!=channel.Id||chatCacheSearch!=search)
         {
             if(chatCacheChannel!=channel.Id||chatCacheSearch!=search)expandedChatRows=0;
-            filteredChat.Clear();filteredChat.AddRange(plugin.History.Where(m=>ChatPolicy.Matches(m.Type,m.Sender,m.Text,channel.Types,search)));
+            filteredChat.Clear();filteredChat.AddRange(plugin.History.Where(m=>ChatFilter.Accepts(channel,m.Type,m.SourceKind,m.TargetKind)&&ChatPolicy.Matches(m.Type,m.Sender,m.Text,channel.Types,search)));
             chatCacheRevision=plugin.HistoryRevision;chatCacheChannel=channel.Id;chatCacheSearch=search;
         }
         if(filteredChat.Count==0)ReadableText.TextDisabled(search.Length==0?"等待新消息…":"没有匹配的消息");
@@ -357,7 +357,6 @@ internal sealed partial class UserInterface
     private void SendChat()
     {
         if(!ChatPolicy.TryBuild(chatRoute,tellRecipient,draft,out _,out var error)){notice=error;return;}
-        if(!C.NativeInteractions){notice="请在模块设置中启用游戏交互。";return;}
         ChatPolicy.TryBuild(chatRoute,tellRecipient,draft,out var command,out _);
         ImGui.SetClipboardText(command);
         C.ShowOriginalUi=true;C.HideOriginalChat=false;plugin.Save();

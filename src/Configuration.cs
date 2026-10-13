@@ -9,8 +9,8 @@ namespace XLinUI;
 [Serializable]
 public sealed class Configuration : IPluginConfiguration
 {
-    public int Version { get; set; } = 7;
-    public int Material { get; set; } = 1; // 0 existing, 1 solid, 2 image, 3 sampled glass
+    public int Version { get; set; } = 8;
+    public int Material { get; set; } = 1; // 0 legacy panel, 1 solid, 2 local image
     public string BackgroundFile { get; set; } = "";
     public Vector3 BackgroundColor { get; set; } = new(.035f,.045f,.065f);
     public Vector3 ForegroundColor { get; set; } = new(.95f,.97f,1);
@@ -18,8 +18,6 @@ public sealed class Configuration : IPluginConfiguration
     public float BackgroundTintOpacity { get; set; } = .35f;
     public float ImageBlur { get; set; }
     public int ImageFit { get; set; }
-    public float GlassBlur { get; set; } = 20;
-    public bool LiveGlass { get; set; }
     public bool FlatIcons { get; set; } = true;
     public bool FlatNativeIcons { get; set; } = true;
     public bool FlatNativeButtons { get; set; } = true;
@@ -27,7 +25,6 @@ public sealed class Configuration : IPluginConfiguration
     public float MinimapSize { get; set; } = 240;
     public float MinimapZoom { get; set; } = 1;
     public float ReadabilityShade { get; set; } = .35f;
-    public float GlassRefresh { get; set; } = 2;
     public bool UseCustomFont { get; set; }
     public string FontFile { get; set; } = "";
     public float FontSize { get; set; } = 18;
@@ -168,16 +165,16 @@ public sealed class Configuration : IPluginConfiguration
     public void Normalize()
     {
         MinimapSize=Bound(MinimapSize,160,600,240);MinimapZoom=Bound(MinimapZoom,.5f,4,1);ReadabilityShade=Bound(ReadabilityShade,0,.8f,.35f);
-        Material=Math.Clamp(Material,0,3);ImageFit=Math.Clamp(ImageFit,0,1);
+        Material=Material is >=0 and <=2?Material:1;ImageFit=Math.Clamp(ImageFit,0,1);
         BackgroundFile??="";FontFile??="";
         BackgroundOpacity=Clamp(BackgroundOpacity);BackgroundTintOpacity=Clamp(BackgroundTintOpacity);
         BackgroundColor=new(Clamp(BackgroundColor.X),Clamp(BackgroundColor.Y),Clamp(BackgroundColor.Z));
         ForegroundColor=new(Clamp(ForegroundColor.X),Clamp(ForegroundColor.Y),Clamp(ForegroundColor.Z));
-        ImageBlur=Bound(ImageBlur,0,32,0);GlassBlur=Bound(GlassBlur,1,64,20);GlassRefresh=Bound(GlassRefresh,.5f,4,2);
+        ImageBlur=Bound(ImageBlur,0,32,0);
         FontSize=Bound(FontSize,12,36,18);FontFace=Math.Clamp(FontFace,0,20);
 
         var oldVersion=Version;
-        Version = 7;
+        Version = 8;
         if(oldVersion<7&&OpaqueOnEnable)ApplyOpaqueBackground();
         ChatNavigation=Enum.IsDefined(ChatNavigation)?ChatNavigation:ChatNavigation.Left;
         ChatPresentation=Enum.IsDefined(ChatPresentation)?ChatPresentation:ChatPresentation.Grouped;
@@ -237,6 +234,8 @@ public sealed class Configuration : IPluginConfiguration
             c.Id = string.IsNullOrWhiteSpace(c.Id) ? Guid.NewGuid().ToString("N") : c.Id;
             c.Name = string.IsNullOrWhiteSpace(c.Name) ? "未命名" : c.Name;
             c.Types ??= [];
+            c.Relations ??= [];
+            foreach(var key in new List<ushort>(c.Relations.Keys))if(c.Relations[key] is null||!c.Types.Contains(key))c.Relations.Remove(key);
             if(!ids.Add(c.Id)){c.Id=Guid.NewGuid().ToString("N");ids.Add(c.Id);}
             c.Types=new List<ushort>(new HashSet<ushort>(c.Types));
             if(oldVersion<6)c.SendRoute=ChatPolicy.DefaultRoute(c.Types);
@@ -277,6 +276,8 @@ public sealed class Channel(string name, List<ushort> types)
     public string Name { get; set; } = name;
     // Empty means all received messages. These values are LogKind IDs, not send commands.
     public List<ushort> Types { get; set; } = types;
+    public bool MatchNone { get; set; }
+    public Dictionary<ushort,ChatRelationFilter> Relations { get; set; } = [];
     public string SendRoute { get; set; } = "say";
     public bool CustomColor { get; set; }
     public Vector3 Color { get; set; } = new(.39f,.77f,.73f);

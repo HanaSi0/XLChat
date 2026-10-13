@@ -18,6 +18,7 @@ namespace XLinUI;
 internal sealed partial class UserInterface(Plugin plugin)
 {
     internal bool SettingsOpen;
+    private bool settingsPendingSave;
     internal bool PerformanceOpen;
     private string performanceReport="";
     private DateTime nextPerformanceReport;
@@ -93,6 +94,7 @@ internal sealed partial class UserInterface(Plugin plugin)
             if (teleportOpen) DrawTeleports();
         }
         if (SettingsOpen) DrawSettings();
+        if(settingsPendingSave&&!ImGui.IsAnyItemActive()&&!ImGui.IsMouseDown(ImGuiMouseButton.Left)){settingsPendingSave=false;plugin.Save();}
         Appearance.DrawDialog();
         if(PerformanceOpen)
         {
@@ -236,18 +238,21 @@ internal sealed partial class UserInterface(Plugin plugin)
                     if(ReadableText.Button("立即使用不透明背景")){C.ApplyOpaqueBackground();changed=true;}
                     changed |= Toggle("锁定窗口位置与尺寸", C.LockWindows, v => C.LockWindows = v);
                     changed |= Toggle("隐藏边框", C.HideBorders, v => C.HideBorders = v);
-                    changed |= Toggle("纯文字模式（透明背景、隐藏边框）", C.TextOnly, v => C.TextOnly = v);
+                    var backgroundMode=C.TextOnly?2:(C.ForceTransparentPanels||!C.Glass?1:0);
+                    if(ImGui.Combo("面板显示",ref backgroundMode,new[]{"显示背景","透明背景","只显示文字"},3))
+                    {C.TextOnly=backgroundMode==2;C.ForceTransparentPanels=backgroundMode!=0;C.Glass=backgroundMode==0;changed=true;}
                     changed |= Toggle("其他 UI 使用圆角", C.Rounded, v => C.Rounded = v);
-                    changed |= Toggle("插件窗口强制无背景（保留图标与进度条）", C.ForceTransparentPanels, v => C.ForceTransparentPanels = v);
-                    changed |= Toggle("原版已适配窗口强制无背景", C.ForceTransparentNative, v => C.ForceTransparentNative = v);
-                    changed |= Toggle("文字细描边", C.TextOutline, v => C.TextOutline = v);
-                    changed |= Toggle("原版窗口文字描边", C.NativeTextOutline, v => C.NativeTextOutline = v);
-                    changed |= Toggle("提高次要文字对比度", C.HighContrastText, v => C.HighContrastText = v);
-                    changed |= Toggle("无状态时仍显示占位面板", C.ShowEmptyStatuses, v => C.ShowEmptyStatuses = v);
-                    var hudFont = C.HudFontScale;
-                    if (ImGui.SliderFloat("战斗 HUD 字号比例", ref hudFont, .8f, 1.6f, "%.2f")) { C.HudFontScale = hudFont; changed = true; }
-                    changed |= Toggle("显示面板背景", C.Glass, v => C.Glass = v);
-                    ReadableText.TextDisabled("强制无背景时不透明度滑块不生效；进度条和图标仍保留。未启用强制无背景时可调背景透明度。");
+                    changed |= Toggle("提高文字对比度", C.HighContrastText, v => C.HighContrastText = v);
+                    if(ImGui.CollapsingHeader("文字与原版窗口细节"))
+                    {
+                        changed |= Toggle("原版已适配窗口透明背景", C.ForceTransparentNative, v => C.ForceTransparentNative = v);
+                        changed |= Toggle("文字细描边", C.TextOutline, v => C.TextOutline = v);
+                        changed |= Toggle("原版窗口文字描边", C.NativeTextOutline, v => C.NativeTextOutline = v);
+                        changed |= Toggle("无状态时显示占位面板", C.ShowEmptyStatuses, v => C.ShowEmptyStatuses = v);
+                        var hudFont=C.HudFontScale;
+                        if(ImGui.SliderFloat("战斗 HUD 字号比例",ref hudFont,.8f,1.6f,"%.2f")){C.HudFontScale=hudFont;changed=true;}
+                    }
+                    ReadableText.TextDisabled("背景颜色、图片模糊与字体请在“素材与字体”调整。透明模式优先于背景不透明度。");
                     var opacity = C.Material==0?C.Opacity:C.BackgroundOpacity;
                     if (ImGui.SliderFloat("背景不透明度", ref opacity, 0, 1, "%.2f")) { C.Opacity = C.BackgroundOpacity = opacity; changed = true; }
                     var tint = C.Tint;
@@ -365,7 +370,7 @@ internal sealed partial class UserInterface(Plugin plugin)
         finally
         {
             EndPanel();
-            if (changed) plugin.Save();
+            if (changed) settingsPendingSave=true;
         }
     }
 

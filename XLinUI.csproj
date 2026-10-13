@@ -1,10 +1,10 @@
 <Project Sdk="Dalamud.NET.Sdk/15.0.0">
   <PropertyGroup>
-    <Version>0.3.2</Version>
+    <Version>0.3.3</Version>
     <Author>HanaSi0</Author>
     <Name>XLinUI</Name>
     <Punchline>给亲友的简洁界面，聊天、顶部栏和热键栏自由调整。</Punchline>
-    <Description>给亲友用的 FF14 界面小改造：简洁聊天、图标顶部栏、多热键栏编辑、玻璃背景和自定义字体。大小、颜色和显示内容都可以自己调整，保留原版技能拖放与常用操作。输入 /xlinui 开始设置。</Description>
+    <Description>给亲友用的 FF14 界面小改造：简洁聊天、图标顶部栏、多热键栏编辑、本机图片模糊背景和自定义字体。大小、颜色和显示内容都可以自己调整，保留原版技能拖放与常用操作。输入 /xlinui 开始设置。</Description>
     <RepoUrl>https://github.com/HanaSi0/XLinUI</RepoUrl>
     <Tags>ui;chat;hotbar;personal</Tags>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>

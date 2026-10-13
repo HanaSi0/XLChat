@@ -105,7 +105,7 @@ public sealed class Plugin : IDalamudPlugin
         {
             History.Add(line); HistoryRevision++;
             if(line.Type==60){LatestChatError=line.Text;LatestChatErrorTime=DateTime.Now;}
-            foreach(var channel in Config.Channels.Where(c=>c.Types.Count==0||c.Types.Contains(line.Type)))
+            foreach(var channel in Config.Channels.Where(c=>ChatFilter.Accepts(c,line.Type,line.SourceKind,line.TargetKind)))
                 if(channel.Id!=ActiveChannel||!Config.Enabled||!Config.ShowChat||!ui.ChatVisible||!ui.ChatAtBottom)
                     Unread[channel.Id]=Math.Min(9999,Unread.GetValueOrDefault(channel.Id)+1);
         }
@@ -179,7 +179,7 @@ public sealed class Plugin : IDalamudPlugin
         var person=message.Sender.Payloads.OfType<PlayerPayload>().FirstOrDefault();
         var maps=message.Message.Payloads.OfType<MapLinkPayload>().Select(m=>new ChatMapLink(m.TerritoryType.RowId,m.Map.RowId,m.RawX,m.RawY)).ToArray();
         var items=message.Message.Payloads.OfType<ItemPayload>().Select(i=>new ChatItemLink(i.ItemId,i.IsHQ)).ToArray();
-        pendingChat.Enqueue(new ChatLine(Interlocked.Increment(ref chatSequence),(ushort)message.LogKind,message.Sender.TextValue,message.Message.TextValue,timestamp,person?.PlayerName??"",person?.World.RowId??0,maps,items));
+        pendingChat.Enqueue(new ChatLine(Interlocked.Increment(ref chatSequence),(ushort)message.LogKind,message.Sender.TextValue,message.Message.TextValue,timestamp,person?.PlayerName??"",person?.World.RowId??0,maps,items,(int)message.SourceKind,(int)message.TargetKind));
         while(pendingChat.Count>Config.ChatHistoryLimit)pendingChat.TryDequeue(out _);
         // Copy owned strings/IDs only; leave the game's handled state unchanged.
     }
@@ -205,6 +205,6 @@ public sealed class Plugin : IDalamudPlugin
     }
 }
 
-internal sealed record ChatLine(long Id,ushort Type,string Sender,string Text,DateTime Time,string PlayerName,uint World,ChatMapLink[] Maps,ChatItemLink[] Items);
+internal sealed record ChatLine(long Id,ushort Type,string Sender,string Text,DateTime Time,string PlayerName,uint World,ChatMapLink[] Maps,ChatItemLink[] Items,int SourceKind=0,int TargetKind=0);
 internal sealed record ChatMapLink(uint Territory,uint Map,int X,int Y);
 internal sealed record ChatItemLink(uint Item,bool HighQuality);

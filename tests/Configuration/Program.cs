@@ -75,8 +75,8 @@ selectedCopy.ChatSendRoute="/teleport";selectedCopy.ChatActiveChannelId="missing
 if(selectedCopy.ChatSendRoute!="say"||selectedCopy.ChatActiveChannelId!=selectedCopy.Channels[0].Id)throw new Exception("Selection recovery failed");
 Console.WriteLine("PASS: selected view and send route persist independently with invalid values recovered");
 
-var appearanceConfig=new Configuration{Material=99,GlassRefresh=float.NaN,FontSize=float.PositiveInfinity,ImageBlur=-10,BackgroundOpacity=2,FontFace=-3};appearanceConfig.Normalize();
-if(appearanceConfig.Material!=3||appearanceConfig.GlassRefresh!=2||appearanceConfig.FontSize!=18||appearanceConfig.ImageBlur!=0||appearanceConfig.BackgroundOpacity!=1||appearanceConfig.FontFace!=0)throw new Exception("Appearance normalization failed");
+var appearanceConfig=new Configuration{Material=99,FontSize=float.PositiveInfinity,ImageBlur=-10,BackgroundOpacity=2,FontFace=-3};appearanceConfig.Normalize();
+if(appearanceConfig.Material!=1||appearanceConfig.FontSize!=18||appearanceConfig.ImageBlur!=0||appearanceConfig.BackgroundOpacity!=1||appearanceConfig.FontFace!=0)throw new Exception("Appearance normalization failed");
 Console.WriteLine("PASS: appearance values normalize safely");
 
 var assetConfig=new Configuration{Material=2,BackgroundFile="C:/素材/背景.png",FontFile="C:/字体/中文.ttf",UseCustomFont=true,FontSize=24,BackgroundColor=new(.1f,.2f,.3f)};
@@ -117,13 +117,24 @@ Console.WriteLine("PASS: matching menu retains its actual icon");
 var modernVisuals=new Configuration{MinimapSize=float.NaN,MinimapZoom=900,ReadabilityShade=-1};modernVisuals.Normalize();
 if(modernVisuals.MinimapSize!=240||modernVisuals.MinimapZoom!=4||modernVisuals.ReadabilityShade!=0)throw new Exception("Invalid modern visual bounds");
 Console.WriteLine("PASS: map dimensions zoom and readability reject invalid settings");
-if(new Configuration().LiveGlass)throw new Exception("Periodic GPU readback should be opt-in");
+if(JsonConvert.SerializeObject(new Configuration()).Contains("LiveGlass"))throw new Exception("Removed live sampling persisted");
 Console.WriteLine("PASS: continuous glass sampling defaults off");
 
 var upgrade=new Configuration{Version=6,ForceTransparentPanels=true,ForceTransparentNative=true,TextOnly=true,Opacity=0};upgrade.Normalize();
-if(upgrade.Version!=7||upgrade.ForceTransparentPanels||upgrade.ForceTransparentNative||upgrade.TextOnly||upgrade.Opacity!=1||upgrade.ChatBackground!=ChatBackground.Global)throw new Exception("Opaque upgrade failed");
+if(upgrade.Version!=8||upgrade.ForceTransparentPanels||upgrade.ForceTransparentNative||upgrade.TextOnly||upgrade.Opacity!=1||upgrade.ChatBackground!=ChatBackground.Global)throw new Exception("Opaque upgrade failed");
 Console.WriteLine("PASS: legacy background migration applies opaque startup without leaving hidden-background flags");
 var customAlpha=new Configuration{OpaqueOnEnable=false,Opacity=.2f,BackgroundOpacity=.3f,ChatBackground=ChatBackground.Custom,ChatBackgroundOpacity=.4f};customAlpha.Normalize();
 var alphaCopy=JsonConvert.DeserializeObject<Configuration>(JsonConvert.SerializeObject(customAlpha))!;alphaCopy.Normalize();
 if(alphaCopy.OpaqueOnEnable||alphaCopy.Opacity!=.2f||alphaCopy.BackgroundOpacity!=.3f||alphaCopy.ChatBackgroundOpacity!=.4f)throw new Exception("Transparency preference lost");
 Console.WriteLine("PASS: disabling opaque startup preserves custom transparency");
+
+var import=ChatTwoImport.Parse("""{"Tabs":[{"Name":"队伍","Channel":"Party","SelectedChannels":{"Party":{"Item1":2,"Item2":4}}},{"Name":"空","SelectedChannels":{}}],"Password":"ignored"}""");
+if(import.Channels.Count!=2||import.Channels[0].SendRoute!="party"||!ChatFilter.Accepts(import.Channels[0],14,1,2)||ChatFilter.Accepts(import.Channels[0],14,2,3)||!ChatFilter.Accepts(import.Channels[0],14,2,2)||!ChatFilter.Accepts(import.Channels[0],14,0,0)||ChatFilter.Accepts(import.Channels[1],10,0,0))throw new Exception("Import filter mismatch");
+if(JsonConvert.SerializeObject(import.Channels).Contains("ignored"))throw new Exception("Import retained private fields");
+var importedCopy=JsonConvert.DeserializeObject<System.Collections.Generic.List<Channel>>(JsonConvert.SerializeObject(import.Channels))!;
+if(!ChatFilter.Accepts(importedCopy[0],14,1,2)||ChatFilter.Accepts(importedCopy[1],10,0,0))throw new Exception("Imported relation roundtrip failed");
+var invalidImport=false;try{ChatTwoImport.Parse("""{"Tabs":[{"Name":"坏","SelectedChannels":{"Say":true}}]}""");}catch(JsonException){invalidImport=true;}
+if(!invalidImport)throw new Exception("Invalid relation import accepted");
+var legacyGlass=JsonConvert.DeserializeObject<Configuration>("""{"Version":7,"Material":3,"LiveGlass":true,"GlassRefresh":0.1,"OpaqueOnEnable":false,"Opacity":0.4,"BackgroundOpacity":0.4}""")!;legacyGlass.Normalize();
+if(legacyGlass.Material!=1||legacyGlass.Opacity!=.4f)throw new Exception("Removed glass migration failed");
+Console.WriteLine("PASS: Chat Two import keeps relation masks, empty filters and routes; excludes private fields; rejects malformed input; removed glass migrates safely");
