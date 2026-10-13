@@ -61,3 +61,24 @@ Check(HudReplacementPolicy.ShouldHide("_DTR",HudReady.Top) && !HudReplacementPol
 Check(HudValues.Ratio(200,100)==1 && HudValues.Ratio(1,0)==0 && HudValues.Ratio(float.NaN,10)==0,"bound HP and cast progress with invalid values");
 Check(HudValues.Duration(59.1f)=="60" && HudValues.Duration(61)=="2m" && HudValues.Duration(0)=="∞","status duration handles seconds minutes and indefinite effects");
 Check(!HudValues.ValidCast(float.NaN,2) && !HudValues.ValidCast(1,0) && HudValues.ValidCast(1,2),"invalid cast data preserves native cast display");
+
+Check(SurfacePolicy.PanelAlpha(true,false,true,1)==0,"forced transparent panels override full opacity without text-only mode");
+Check(SurfacePolicy.NativeAlpha(255,true,false,true,1)==0,"native background becomes transparent independently of its opacity slider");
+Check(SurfacePolicy.NativeAlpha(100,false,false,true,.5f)==50,"native transparency respects its original alpha");
+Check(SurfacePolicy.PanelAlpha(false,false,true,float.NaN)==.88f && SurfacePolicy.PanelAlpha(false,false,true,2)==1,"invalid opacity has bounded fallback");
+var readable=SurfacePolicy.ReadableColor(new System.Numerics.Vector3(.1f,.2f,.3f));
+Check(.2126f*readable.X+.7152f*readable.Y+.0722f*readable.Z>=.719f && readable.Z>readable.X,"dark accent is brightened while preserving hue order");
+Check(SurfacePolicy.ReadableColor(System.Numerics.Vector3.One)==System.Numerics.Vector3.One,"already bright text is unchanged");
+var outline=new NativeTextState();var textOriginal=new TextAppearance(0xFF123456,0x40);
+var outlined=outline.Change("Inventory",1,2,textOriginal,true)!.Value;
+Check(outlined.EdgeColor==0xE8000000 && outlined.Flags==0x48,"native text receives black outline while word wrap remains set");
+outline.Change("Inventory",1,2,outlined,true);
+Check(outline.Change("Inventory",1,2,outlined,false)==textOriginal,"restore native outline color and original edge state after repeated updates");
+outline.Change("Inventory",1,2,textOriginal,true);
+Check(outline.Change("Inventory",1,2,outlined with {Flags=0x4A},false)?.Flags==0x42,"preserve bold flag changed by game during outline ownership");
+outline.Change("Inventory",1,2,textOriginal,true);
+Check(outline.Change("Inventory",3,2,outlined,false)==null,"recreated addon never receives stale text style");
+outline.Change("Inventory",1,2,textOriginal,true);outline.Forget("Inventory");
+Check(outline.Change("Inventory",1,2,outlined,false)==null,"finalized text style identity is forgotten");
+var priorEdge=new TextAppearance(0xFF888888,0x48);outline.Change("Inventory",1,2,priorEdge,true);
+Check(outline.Change("Inventory",1,2,outlined,false)==priorEdge,"originally outlined text keeps its original outline on restoration");

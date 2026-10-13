@@ -42,3 +42,14 @@ Console.WriteLine("PASS: invalid status icon size recovered");
 var customModern=JsonConvert.DeserializeObject<Configuration>("{\"ModernTarget\":false,\"ModernFocus\":false,\"ModernStatuses\":false,\"StyleNativeWindows\":false}")!;customModern.Normalize();
 if(customModern.ModernTarget||customModern.ModernFocus||customModern.ModernStatuses||customModern.StyleNativeWindows)throw new Exception("Explicit module opt-outs overwritten");
 Console.WriteLine("PASS: existing explicit module opt-outs remain disabled on update");
+
+var transparent=new Configuration();
+if(!transparent.ForceTransparentPanels||!transparent.ForceTransparentNative||!transparent.TextOutline||!transparent.NativeTextOutline||!transparent.HighContrastText||transparent.TextOnly||transparent.ShowEmptyStatuses)throw new Exception("Transparency defaults failed");
+Console.WriteLine("PASS: default transparent mode keeps icon/bar mode and hides empty status placeholders");
+transparent.ForceTransparentNative=false;transparent.ForceTransparentPanels=false;transparent.HudFontScale=1.3f;
+var transparentCopy=JsonConvert.DeserializeObject<Configuration>(JsonConvert.SerializeObject(transparent))!;transparentCopy.Normalize();
+if(transparentCopy.ForceTransparentPanels||transparentCopy.ForceTransparentNative||transparentCopy.HudFontScale!=1.3f)throw new Exception("Transparency choices did not persist");
+Console.WriteLine("PASS: explicit transparency opt-outs and HUD font scale persist");
+transparent.HudFontScale=float.PositiveInfinity;transparent.Normalize();if(transparent.HudFontScale!=1.05f)throw new Exception("HUD font bounds failed");
+transparent.ApplyModernPreset();if(!transparent.ForceTransparentPanels||!transparent.ForceTransparentNative||transparent.TextOnly)throw new Exception("Updated preset failed");
+Console.WriteLine("PASS: modern preset uses transparent backgrounds without dropping resource bars");

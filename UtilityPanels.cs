@@ -55,7 +55,7 @@ internal sealed partial class UserInterface
             if (ImGui.SliderInt("主音量", ref volume, 0, 100, "%d%%"))
                 Native(() => Plugin.GameConfig.System.Set("SoundMaster", (uint)volume));
             ImGui.EndDisabled();
-            if (ImGui.Button("完整声音设置")) OpenGame(19);
+            if (ReadableText.Button("完整声音设置")) OpenGame(19);
         }
         finally { EndPanel(); }
     }
@@ -66,8 +66,8 @@ internal sealed partial class UserInterface
         var visible = ImGui.Begin(title + "###XLinUI" + title, WindowFlags);
         if (visible)
         {
-            ImGui.TextUnformatted(title); ImGui.SameLine();
-            if (ImGui.SmallButton("关闭")) open = false;
+            ReadableText.TextUnformatted(title); ImGui.SameLine();
+            if (ReadableText.SmallButton("关闭")) open = false;
             ImGui.Separator();
         }
         return visible && open;
@@ -90,7 +90,7 @@ internal sealed partial class UserInterface
         try
         {
             if (!visible) return;
-            ImGui.TextDisabled("读取游戏设置；启用游戏交互后可修改。");
+            ReadableText.TextDisabled("读取游戏设置；启用游戏交互后可修改。");
             Effect("自身特效", UiConfigOption.BattleEffectSelf);
             Effect("队友特效", UiConfigOption.BattleEffectParty);
             Effect("其他玩家特效", UiConfigOption.BattleEffectOther);
@@ -108,7 +108,7 @@ internal sealed partial class UserInterface
 
     private void Effect(string name, UiConfigOption option)
     {
-        if (!Plugin.GameConfig.UiConfig.TryGet(option.ToString(), out uint value)) { ImGui.TextDisabled(name + "：当前客户端不支持"); return; }
+        if (!Plugin.GameConfig.UiConfig.TryGet(option.ToString(), out uint value)) { ReadableText.TextDisabled(name + "：当前客户端不支持"); return; }
         var index = 2 - (int)Math.Clamp(value, 0, 2);
         ImGui.BeginDisabled(!C.NativeInteractions);
         if (ImGui.SliderInt(name, ref index, 0, 2, new[] { "关闭", "简单", "完全" }[index]))
@@ -118,7 +118,7 @@ internal sealed partial class UserInterface
 
     private void Pet(string name, UiConfigOption option)
     {
-        if (!Plugin.GameConfig.UiConfig.TryGet(option.ToString(), out uint value)) { ImGui.TextDisabled(name + "：当前客户端不支持"); return; }
+        if (!Plugin.GameConfig.UiConfig.TryGet(option.ToString(), out uint value)) { ReadableText.TextDisabled(name + "：当前客户端不支持"); return; }
         var index = (int)Math.Clamp(value, 0, 2);
         ImGui.BeginDisabled(!C.NativeInteractions);
         if (ImGui.SliderInt(name, ref index, 0, 2, new[] { "小", "中", "大" }[index]))
@@ -132,7 +132,7 @@ internal sealed partial class UserInterface
         try
         {
             if (!visible) return;
-            ImGui.TextUnformatted($"剩余部族任务次数：{GameBridge.TribeAllowance()}");
+            ReadableText.TextUnformatted($"剩余部族任务次数：{GameBridge.TribeAllowance()}");
             uint? lastExpansion = null;
             foreach (var tribe in Plugin.Data.GetExcelSheet<BeastTribe>())
             {
@@ -144,19 +144,19 @@ internal sealed partial class UserInterface
                 {
                     lastExpansion = tribe.Expansion.RowId;
                     var expansion = Plugin.Data.GetExcelSheet<ExVersion>().GetRowOrDefault(tribe.Expansion.RowId);
-                    ImGui.TextDisabled(expansion?.Name.ToString() ?? $"资料片 {tribe.Expansion.RowId}");
+                    ReadableText.TextDisabled(expansion?.Name.ToString() ?? $"资料片 {tribe.Expansion.RowId}");
                 }
                 ImGui.PushID((int)tribe.RowId);
                 GameIcon(tribe.IconReputation, 32); ImGui.SameLine();
                 ImGui.BeginGroup();
-                ImGui.TextUnformatted(tribe.Name.ToString());
+                ReadableText.TextUnformatted(tribe.Name.ToString());
                 var rankRow = Plugin.Data.GetExcelSheet<BeastReputationRank>().GetRowOrDefault(rank);
                 var rankName = rankRow?.Name.ToString() ?? rank.ToString();
-                ImGui.TextDisabled($"{rankName} ({rank}/{tribe.MaxRank})");
+                ReadableText.TextDisabled($"{rankName} ({rank}/{tribe.MaxRank})");
                 ImGui.EndGroup();
                 ImGui.ProgressBar(rep.Required == 0 ? 1 : Math.Clamp((float)rep.Current / rep.Required, 0, 1), new Vector2(-1, 10), rep.Required == 0 ? "最高等级" : $"{rep.Current} / {rep.Required}");
                 var currency = tribe.CurrencyItem.Value;
-                if (currency.RowId != 0) ImGui.TextDisabled($"{currency.Name}：{GameBridge.ItemCount(currency.RowId)}");
+                if (currency.RowId != 0) ReadableText.TextDisabled($"{currency.Name}：{GameBridge.ItemCount(currency.RowId)}");
                 ImGui.Separator(); ImGui.PopID();
             }
         }
@@ -175,10 +175,10 @@ internal sealed partial class UserInterface
                 var row = Plugin.Data.GetExcelSheet<OnlineStatus>().GetRowOrDefault(id);
                 if (row is null) continue;
                 GameIcon(row.Value.Icon, 28); ImGui.SameLine();
-                if (ImGui.Selectable(row.Value.Name.ToString() + "###online" + id)) Native(() => GameBridge.SetOnlineStatus(id));
+                if (ReadableText.Selectable(row.Value.Name.ToString() + "###online" + id)) Native(() => GameBridge.SetOnlineStatus(id));
             }
-            ImGui.TextWrapped("可用的指导者状态和权限由游戏校验。需启用游戏交互。");
-            if (ImGui.Button("打开个人信息")) OpenPersonalInfo();
+            ReadableText.TextWrapped("可用的指导者状态和权限由游戏校验。需启用游戏交互。");
+            if (ReadableText.Button("打开个人信息")) OpenPersonalInfo();
         }
         finally { EndPanel(); }
     }
@@ -189,8 +189,8 @@ internal sealed partial class UserInterface
         try
         {
             if (!visible) return;
-            if (ImGui.Button("刷新套装")) gearsets = GameBridge.ReadGearsets();
-            ImGui.TextDisabled("点击切换已保存装备套装；等级来自游戏，装等来自套装记录。");
+            if (ReadableText.Button("刷新套装")) gearsets = GameBridge.ReadGearsets();
+            ReadableText.TextDisabled("点击切换已保存装备套装；等级来自游戏，装等来自套装记录。");
             if (ImGui.BeginTable("job-columns", 3, ImGuiTableFlags.SizingStretchSame))
             {
                 try
@@ -204,7 +204,7 @@ internal sealed partial class UserInterface
                         {
                             var matching = gearsets.Where(g => JobGroup(g.Job) == group).ToArray();
                             if (matching.Length == 0) continue;
-                            ImGui.TextColored(new Vector4(C.Tint, 1), group);
+                            ReadableText.TextColored(new Vector4(C.Tint, 1), group);
                             foreach (var gear in matching)
                             {
                                 var job = Plugin.Data.GetExcelSheet<ClassJob>().GetRowOrDefault(gear.Job);
@@ -214,7 +214,7 @@ internal sealed partial class UserInterface
                                 GameIcon((uint)(62100 + gear.Job), 30); ImGui.SameLine();
                                 var pos = ImGui.GetCursorScreenPos();
                                 var width = ImGui.GetContentRegionAvail().X;
-                                if (ImGui.Selectable("##gearset", false, ImGuiSelectableFlags.None, new Vector2(width, 40 * ImGuiHelpers.GlobalScale)))
+                                if (ReadableText.Selectable("##gearset", false, ImGuiSelectableFlags.None, new Vector2(width, 40 * ImGuiHelpers.GlobalScale)))
                                     Native(() => GameBridge.EquipGearset(gear.Index));
                                 var draw = ImGui.GetWindowDrawList();
                                 draw.AddText(pos, 0xFFF4EBE5, job.Value.Name.ToString());
@@ -230,8 +230,8 @@ internal sealed partial class UserInterface
                 }
                 finally { ImGui.EndTable(); }
             }
-            if (gearsets.Count == 0) ImGui.TextDisabled("未读取到保存的装备套装；可在原版角色界面保存。");
-            if (ImGui.Button("原版角色／套装界面")) OpenGame(2);
+            if (gearsets.Count == 0) ReadableText.TextDisabled("未读取到保存的装备套装；可在原版角色界面保存。");
+            if (ReadableText.Button("原版角色／套装界面")) OpenGame(2);
         }
         finally { EndPanel(); }
     }
@@ -255,17 +255,17 @@ internal sealed partial class UserInterface
                 var row = Plugin.Data.GetExcelSheet<Item>().GetRowOrDefault(item.Id);
                 if (row is null) continue;
                 GameIcon(row.Value.Icon, 28); ImGui.SameLine();
-                ImGui.TextUnformatted($"{row.Value.Name}   {item.Condition:F0}% / {item.Spiritbond:F0}%");
+                ReadableText.TextUnformatted($"{row.Value.Name}   {item.Condition:F0}% / {item.Spiritbond:F0}%");
             }
             ImGui.Separator();
-            ImGui.TextDisabled("百分比：耐久／精炼度。耐久可超过 100%。");
+            ReadableText.TextDisabled("百分比：耐久／精炼度。耐久可超过 100%。");
             if (repairMaterialId is null)
                 repairMaterialId = Plugin.Data.GetExcelSheet<Item>().FirstOrDefault(i => i.Name.ToString() is "8级暗物质" or "Grade 8 Dark Matter").RowId;
-            if (repairMaterialId.Value != 0) ImGui.TextDisabled($"8级暗物质 × {GameBridge.ItemCount(repairMaterialId.Value)}");
-            if (ImGui.Button("修理")) OpenAction(6);
-            ImGui.SameLine(); if (ImGui.Button("精制魔晶石")) OpenAction(14);
-            ImGui.SameLine(); if (ImGui.Button("镶嵌魔晶石")) OpenAction(12);
-            if (ImGui.Button("镶嵌魔晶石 II")) OpenAction(13);
+            if (repairMaterialId.Value != 0) ReadableText.TextDisabled($"8级暗物质 × {GameBridge.ItemCount(repairMaterialId.Value)}");
+            if (ReadableText.Button("修理")) OpenAction(6);
+            ImGui.SameLine(); if (ReadableText.Button("精制魔晶石")) OpenAction(14);
+            ImGui.SameLine(); if (ReadableText.Button("镶嵌魔晶石")) OpenAction(12);
+            if (ReadableText.Button("镶嵌魔晶石 II")) OpenAction(13);
         }
         finally { EndPanel(); }
     }
@@ -276,7 +276,7 @@ internal sealed partial class UserInterface
         try
         {
             if (!visible) return;
-            ImGui.TextUnformatted($"金币：{gil:N0}");
+            ReadableText.TextUnformatted($"金币：{gil:N0}");
             if ((DateTime.UtcNow - currencyRead).TotalSeconds >= 1)
             {
                 var nativeIds = GameBridge.ReadInventory(InventoryType.Currency).Select(i => i.Id).ToHashSet();
@@ -298,10 +298,10 @@ internal sealed partial class UserInterface
                 GameIcon(row.Icon, 26); ImGui.SameLine();
                 var weekly = currency.Limited ? $" ({weeklyTomes.Acquired:N0} / {weeklyTomes.Limit:N0} 本周)" : "";
                 var cap = currency.Cap == 0 ? "--" : currency.Cap.ToString("N0");
-                ImGui.TextUnformatted($"{row.Name}   {currency.Quantity:N0} / {cap}{weekly}");
+                ReadableText.TextUnformatted($"{row.Name}   {currency.Quantity:N0} / {cap}{weekly}");
             }
-            ImGui.TextWrapped("货币类物品从游戏表读取上限，军票和本周神典石上限读取专用接口。专用钱包仍可查看原版窗口。");
-            if (ImGui.Button("打开完整货币窗口")) OpenGame(66);
+            ReadableText.TextWrapped("货币类物品从游戏表读取上限，军票和本周神典石上限读取专用接口。专用钱包仍可查看原版窗口。");
+            if (ReadableText.Button("打开完整货币窗口")) OpenGame(66);
         }
         finally { EndPanel(); }
     }
@@ -326,16 +326,16 @@ internal sealed partial class UserInterface
                         {
                             foreach (var entry in group)
                             {
-                                if (ImGui.Selectable(entry.Key, selectedCommand == entry.Key)) selectedCommand = entry.Key;
+                                if (ReadableText.Selectable(entry.Key, selectedCommand == entry.Key)) selectedCommand = entry.Key;
                                 if (ImGui.IsItemHovered()) ImGui.SetTooltip(entry.Value.HelpMessage);
                             }
                             ImGui.TreePop();
                         }
             }
             finally { ImGui.EndChild(); }
-            ImGui.TextUnformatted("已选：" + selectedCommand);
+            ReadableText.TextUnformatted("已选：" + selectedCommand);
             ImGui.InputText("参数", ref commandArguments, 256);
-            if (ImGui.Button("执行所选指令") && Plugin.Commands.Commands.ContainsKey(selectedCommand))
+            if (ReadableText.Button("执行所选指令") && Plugin.Commands.Commands.ContainsKey(selectedCommand))
             {
                 try { Plugin.Commands.ProcessCommand(selectedCommand + (commandArguments.Length == 0 ? "" : " " + commandArguments)); }
                 catch (Exception ex) { Plugin.Log.Error(ex, "插件指令执行失败"); }
@@ -357,16 +357,16 @@ internal sealed partial class UserInterface
         {
             if (!visible) return;
             ImGui.InputTextWithHint("##teleport-filter", "搜索水晶／地区", ref teleportSearch, 128);
-            ImGui.SameLine(); if (ImGui.Button("刷新")) RefreshTeleports();
+            ImGui.SameLine(); if (ReadableText.Button("刷新")) RefreshTeleports();
             foreach (var item in teleportRows)
             {
                 var row = Plugin.Data.GetExcelSheet<Aetheryte>().GetRowOrDefault(item.Id);
                 var name = row?.PlaceName.Value.Name.ToString() ?? $"水晶 {item.Id}";
                 if (!name.Contains(teleportSearch, StringComparison.OrdinalIgnoreCase)) continue;
-                if (ImGui.Selectable($"{name}    {item.Cost:N0} 金币###tp{item.Id}:{item.SubIndex}"))
+                if (ReadableText.Selectable($"{name}    {item.Cost:N0} 金币###tp{item.Id}:{item.SubIndex}"))
                     Native(() => GameBridge.Teleport(item.Id, item.SubIndex));
             }
-            ImGui.TextWrapped("点击请求游戏传送；费用、传送券与可用性以游戏最终确认结果为准。");
+            ReadableText.TextWrapped("点击请求游戏传送；费用、传送券与可用性以游戏最终确认结果为准。");
         }
         finally { EndPanel(); }
     }

@@ -15,10 +15,10 @@ internal sealed partial class UserInterface
         try
         {
             if (!visible) return;
-            ImGui.TextWrapped("读取当前客户端的主菜单入口。已有替代面板使用 XLinUI；其他功能打开原生窗口，标准窗口可使用统一换肤。任务交互、商店与副本机制窗口仍由游戏提供。");
+            ReadableText.TextWrapped("读取当前客户端的主菜单入口。已有替代面板使用 XLinUI；其他功能打开原生窗口，标准窗口可使用统一换肤。任务交互、商店与副本机制窗口仍由游戏提供。");
             ImGui.SetNextItemWidth(-1);
             ImGui.InputTextWithHint("##game-function-search", "搜索角色、背包、任务、社交、系统…", ref gameWindowSearch, 100);
-            if (ImGui.Button("窗口适配审查")) SettingsOpen = true;
+            if (ReadableText.Button("窗口适配审查")) SettingsOpen = true;
             foreach (var entry in Plugin.Data.GetExcelSheet<MainCommand>().OrderBy(x => x.RowId))
             {
                 var label = entry.Name.ToString();
@@ -31,7 +31,7 @@ internal sealed partial class UserInterface
                     var custom = entry.RowId == 35 || entry.RowId == 66 || (entry.RowId == 10 && C.ModernInventory) || (entry.RowId == 4 && C.ModernQuests);
                     var enabled = custom || GameBridge.MainCommandEnabled(entry.RowId);
                     ImGui.BeginDisabled(!enabled);
-                    if (ImGui.Selectable(label + "##open", false))
+                    if (ReadableText.Selectable(label + "##open", false))
                     {
                         switch (entry.RowId)
                         {
@@ -41,7 +41,7 @@ internal sealed partial class UserInterface
                         }
                     }
                     ImGui.EndDisabled();
-                    ImGui.TextDisabled(enabled ? replacement : "当前游戏状态下不可用");
+                    ReadableText.TextDisabled(enabled ? replacement : "当前游戏状态下不可用");
                 }
                 finally { ImGui.PopID(); }
             }

@@ -23,7 +23,10 @@ internal sealed partial class UserInterface
         if (C.ModernCast && Plugin.Objects.LocalPlayer is IBattleChara player && player.IsCasting)
             DrawPlayerCast(player);
         if (C.ModernStatuses && Plugin.Objects.LocalPlayer is IBattleChara owner)
-            DrawPlayerStatuses(owner);
+        {
+            if (C.ShowEmptyStatuses || owner.StatusList.Any(s => s.StatusId != 0)) DrawPlayerStatuses(owner);
+            else Ready |= HudReady.Statuses;
+        }
         if (C.ModernParty && Plugin.Party.Length > 0) DrawModernParty();
     }
     private bool BeginHud(string name, string id, Vector2 position, Vector2 size, params string[] native)
@@ -34,18 +37,20 @@ internal sealed partial class UserInterface
         ImGui.SetNextWindowSize(dimensions, ImGuiCond.FirstUseEver);
         ImGui.SetNextWindowPos(viewport.Pos + position, ImGuiCond.FirstUseEver);
         ImportLayout(id, dimensions, native);
-        return ImGui.Begin(name + "###XLinUI" + id, WindowFlags);
+        var visible = ImGui.Begin(name + "###XLinUI" + id, WindowFlags);
+        ImGui.SetWindowFontScale(C.HudFontScale);
+        return visible;
     }
     private void DrawActorCard(ICharacter actor, bool focus, Vector2 position)
     {
         var id = focus ? "focus" : "target";
-        var visible = BeginHud(focus ? "焦点" : "目标", id, position, new Vector2(420, 180), focus ? "_FocusTargetInfo" : "_TargetInfoMainTarget", focus ? "_FocusTargetInfo" : "_TargetInfo");
+        var visible = BeginHud(focus ? "焦点" : "目标", id, position, new Vector2(400, 155), focus ? "_FocusTargetInfo" : "_TargetInfoMainTarget", focus ? "_FocusTargetInfo" : "_TargetInfo");
         try
         {
             if (!visible) return;
             var name = actor.Name.TextValue;
-            ImGui.TextDisabled($"{(focus ? "焦点" : "目标")} · Lv.{actor.Level}");
-            if (ImGui.Selectable(name + "##actor", Plugin.Targets.Target?.GameObjectId == actor.GameObjectId))
+            ReadableText.TextDisabled($"{(focus ? "焦点" : "目标")} · Lv.{actor.Level}");
+            if (ReadableText.Selectable(name + "##actor", Plugin.Targets.Target?.GameObjectId == actor.GameObjectId))
                 Native(() => Plugin.Targets.Target = actor);
             if (ImGui.IsItemHovered() && ImGui.IsMouseClicked(ImGuiMouseButton.Right))
             {
@@ -54,9 +59,9 @@ internal sealed partial class UserInterface
             }
             ThinResource("HP", actor.CurrentHp, actor.MaxHp, C.Tint);
             if (Plugin.Objects.LocalPlayer is { } local)
-                ImGui.TextDisabled($"距离 {Vector3.Distance(local.Position, actor.Position):F1} yalms · {(actor.IsDead ? "无法战斗" : "")}");
+                ReadableText.TextDisabled($"距离 {Vector3.Distance(local.Position, actor.Position):F1} yalms · {(actor.IsDead ? "无法战斗" : "")}");
             var targetOfTarget = Plugin.Objects.SearchById(actor.TargetObjectId);
-            if (targetOfTarget is not null) ImGui.TextDisabled("目标的目标 · " + targetOfTarget.Name.TextValue);
+            if (targetOfTarget is not null) ReadableText.TextDisabled("目标的目标 · " + targetOfTarget.Name.TextValue);
             if (actor is not IBattleChara battle) return; // Leave native UI for non-battle targets.
             var castReady = !battle.IsCasting || CastLine(battle);
             if (DrawEffectIcons(battle.StatusList, false) && castReady) Ready |= focus ? HudReady.Focus : HudReady.Target;
@@ -65,14 +70,15 @@ internal sealed partial class UserInterface
     }
     private void ThinResource(string label, uint current, uint maximum, Vector3 color)
     {
-        ImGui.TextUnformatted(label); ImGui.SameLine();
-        ImGui.TextDisabled($"{current:N0} / {maximum:N0}   {HudValues.Ratio(current, maximum) * 100:F0}%");
+        ReadableText.TextUnformatted(label); ImGui.SameLine();
+        ReadableText.TextDisabled($"{current:N0} / {maximum:N0}   {HudValues.Ratio(current, maximum) * 100:F0}%");
         if (C.TextOnly) return;
         var pos = ImGui.GetCursorScreenPos();
         var width = Math.Max(20, ImGui.GetContentRegionAvail().X);
         var height = 5 * ImGuiHelpers.GlobalScale;
         var draw = ImGui.GetWindowDrawList();
-        draw.AddRectFilled(pos, pos + new Vector2(width, height), 0x35FFFFFF);
+        draw.AddRectFilled(pos - Vector2.One, pos + new Vector2(width + 1, height + 1), 0xB0000000);
+        draw.AddRectFilled(pos, pos + new Vector2(width, height), 0x55FFFFFF);
         draw.AddRectFilled(pos, pos + new Vector2(width * HudValues.Ratio(current, maximum), height), ImGui.ColorConvertFloat4ToU32(new Vector4(color, 1)));
         ImGui.Dummy(new Vector2(width, height));
     }
@@ -88,8 +94,8 @@ internal sealed partial class UserInterface
         if (string.IsNullOrWhiteSpace(action)) action = $"读条 {actor.CastActionId}";
         var total = actor.TotalCastTime;
         var elapsed = actor.CurrentCastTime;
-        ImGui.TextUnformatted(action);
-        ImGui.SameLine(); ImGui.TextDisabled($"{Math.Max(0, total - elapsed):F1}s" + (actor.IsCastInterruptible ? " · 可打断" : ""));
+        ReadableText.TextUnformatted(action);
+        ImGui.SameLine(); ReadableText.TextDisabled($"{Math.Max(0, total - elapsed):F1}s" + (actor.IsCastInterruptible ? " · 可打断" : ""));
         if (!C.TextOnly)
         {
             ImGui.PushStyleColor(ImGuiCol.PlotHistogram, new Vector4(actor.IsCastInterruptible ? new Vector3(.95f, .65f, .35f) : C.Tint, 1));
@@ -101,7 +107,7 @@ internal sealed partial class UserInterface
     private void DrawPlayerCast(IBattleChara player)
     {
         var viewport = ImGuiHelpers.MainViewport;
-        var visible = BeginHud("读条", "cast", new Vector2(viewport.Size.X / 2 - 180, viewport.Size.Y * .7f), new Vector2(360, 80), "_CastBar");
+        var visible = BeginHud("读条", "cast", new Vector2(viewport.Size.X / 2 - 180, viewport.Size.Y * .7f), new Vector2(350, 55), "_CastBar");
         try { if (visible && CastLine(player)) Ready |= HudReady.PlayerCast; }
         finally { EndPanel(); }
     }
@@ -112,7 +118,7 @@ internal sealed partial class UserInterface
         {
             if (!visible) return;
             var all = player.StatusList.Where(s => s.StatusId != 0).ToArray();
-            if (all.Length == 0) ImGui.TextDisabled("当前无状态");
+            if (all.Length == 0) ReadableText.TextDisabled("当前无状态");
             if (DrawEffectIcons(all, true)) Ready |= HudReady.Statuses;
         }
         finally { EndPanel(); }
@@ -130,18 +136,18 @@ internal sealed partial class UserInterface
             try
             {
                 var maybe = Plugin.Data.GetExcelSheet<Lumina.Excel.Sheets.Status>().GetRowOrDefault(status.StatusId);
-                if (maybe is null) { ImGui.TextDisabled("未知状态 #" + status.StatusId); complete = false; continue; }
+                if (maybe is null) { ReadableText.TextDisabled("未知状态 #" + status.StatusId); complete = false; continue; }
                 var data = maybe.Value;
                 var icon = Plugin.Textures.GetFromGameIcon(new GameIconLookup(data.Icon)).GetWrapOrDefault();
                 var pos = ImGui.GetCursorScreenPos();
                 ImGui.InvisibleButton("effect", new Vector2(size, size + ImGui.GetFontSize()));
                 var draw = ImGui.GetWindowDrawList();
                 if (icon is not null) draw.AddImage(icon.Handle, pos, pos + new Vector2(size));
-                else { draw.AddText(pos, 0xFFFFFFFF, "#" + status.StatusId); complete = false; }
+                else { ReadableText.Draw(draw, pos, 0xFFFFFFFF, "#" + status.StatusId); complete = false; }
                 if (!C.HideBorders && !C.TextOnly) draw.AddRect(pos, pos + new Vector2(size), 0xAA8DB7C3, 0f);
-                draw.AddText(pos + new Vector2(0, size), 0xFFDFE8E8, HudValues.Duration(status.RemainingTime));
+                ReadableText.Draw(draw, pos + new Vector2(0, size), 0xFFDFE8E8, HudValues.Duration(status.RemainingTime));
                 if (data.MaxStacks > 1 && status.Param > 0)
-                    draw.AddText(pos + new Vector2(size - 14, 0), 0xFFFFFFFF, status.Param.ToString());
+                    ReadableText.Draw(draw, pos + new Vector2(size - 14, 0), 0xFFFFFFFF, status.Param.ToString());
                 if (ImGui.IsItemHovered())
                     ImGui.SetTooltip(data.Name.ToString() + "\n" + data.Description.ToString() + $"\n剩余 {status.RemainingTime:F1}s · 参数 {status.Param}" + (allowCancel ? "\n右键：请求取消可取消的增益；是否允许由游戏决定。" : ""));
                 if (allowCancel && ImGui.IsItemClicked(ImGuiMouseButton.Right))
@@ -166,10 +172,10 @@ internal sealed partial class UserInterface
                 try
                 {
                     var actor = member.GameObject;
-                    if (ImGui.Selectable($"{member.Name.TextValue} · Lv.{member.Level} {member.ClassJob.Value.Abbreviation}##member", actor is not null && Plugin.Targets.Target?.GameObjectId == actor.GameObjectId))
+                    if (ReadableText.Selectable($"{member.Name.TextValue} · Lv.{member.Level} {member.ClassJob.Value.Abbreviation}##member", actor is not null && Plugin.Targets.Target?.GameObjectId == actor.GameObjectId))
                     { if (actor is not null) Native(() => Plugin.Targets.Target = actor); }
                     ThinResource("HP", member.CurrentHP, member.MaxHP, C.Tint);
-                    ImGui.TextDisabled(actor is null ? "当前不在本地场景" : $"MP {member.CurrentMP:N0} / {member.MaxMP:N0}");
+                    ReadableText.TextDisabled(actor is null ? "当前不在本地场景" : $"MP {member.CurrentMP:N0} / {member.MaxMP:N0}");
                     ImGui.Separator();
                 }
                 finally { ImGui.PopID(); }

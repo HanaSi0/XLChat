@@ -9,7 +9,14 @@ namespace XLinUI;
 [Serializable]
 public sealed class Configuration : IPluginConfiguration
 {
-    public int Version { get; set; } = 4;
+    public int Version { get; set; } = 5;
+    public bool ForceTransparentPanels { get; set; } = true;
+    public bool ForceTransparentNative { get; set; } = true;
+    public bool TextOutline { get; set; } = true;
+    public bool HighContrastText { get; set; } = true;
+    public bool NativeTextOutline { get; set; } = true;
+    public bool ShowEmptyStatuses { get; set; }
+    public float HudFontScale { get; set; } = 1.05f;
     public bool SquareHotbars { get; set; } = true;
     public bool SquareMinimap { get; set; } = true;
     public bool ModernTarget { get; set; } = true;
@@ -72,12 +79,15 @@ public sealed class Configuration : IPluginConfiguration
         ModernTarget = ModernFocus = ModernCast = ModernStatuses = ModernInventory = ModernQuests = true;
         StyleNativeWindows = SquareHotbars = SquareMinimap = HideOriginalChat = true;
         HideBorders = Glass = Rounded = true; TextOnly = false; Opacity = .88f;
+        ForceTransparentPanels = ForceTransparentNative = TextOutline = NativeTextOutline = HighContrastText = true;
+        ShowEmptyStatuses = false;
         // Preserve interaction opt-in, custom channels, toolbar choices and exclusions.
     }
 
     public void Normalize()
     {
-        Version = 4;
+        Version = 5;
+        HudFontScale = float.IsFinite(HudFontScale) ? Math.Clamp(HudFontScale, .8f, 1.6f) : 1.05f;
         ExcludedNativeWindows ??= [];
         StatusIconSize = float.IsFinite(StatusIconSize) ? Math.Clamp(StatusIconSize, 20, 48) : 30;
         TopSections ??= DefaultTopSections();

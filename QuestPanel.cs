@@ -21,8 +21,8 @@ internal sealed partial class UserInterface
             { acceptedQuests = GameBridge.ReadAcceptedQuests(); lastQuestRead = DateTime.UtcNow; }
             ImGui.SetNextItemWidth(-1);
             ImGui.InputTextWithHint("##quest-filter", "搜索已接受任务…", ref questSearch, 100);
-            if (ImGui.Button("打开完整任务日志")) OpenGame(4, true);
-            ImGui.SameLine(); ImGui.TextDisabled($"已接受 {acceptedQuests.Count} 个普通任务");
+            if (ReadableText.Button("打开完整任务日志")) OpenGame(4, true);
+            ImGui.SameLine(); ReadableText.TextDisabled($"已接受 {acceptedQuests.Count} 个普通任务");
             foreach (var entry in acceptedQuests.OrderByDescending(q => q.Priority))
             {
                 var quest = Plugin.Data.GetExcelSheet<Quest>().GetRowOrDefault(0x10000u + entry.Id);
@@ -31,13 +31,13 @@ internal sealed partial class UserInterface
                 ImGui.PushID(entry.Id);
                 try
                 {
-                    if (ImGui.Selectable((entry.Priority ? "★ " : "") + name + "##quest", false)) ImGui.SetClipboardText(name);
-                    ImGui.TextDisabled(entry.Hidden ? "已接受 · 原生追踪隐藏" : "已接受");
+                    if (ReadableText.Selectable((entry.Priority ? "★ " : "") + name + "##quest", false)) ImGui.SetClipboardText(name);
+                    ReadableText.TextDisabled(entry.Hidden ? "已接受 · 原生追踪隐藏" : "已接受");
                     ImGui.Separator();
                 }
                 finally { ImGui.PopID(); }
             }
-            ImGui.TextWrapped("简洁任务概览；具体目标、地图定位、任务提交及理符／日常详情保留在原版日志和追踪器中。点击任务复制名称。");
+            ReadableText.TextWrapped("简洁任务概览；具体目标、地图定位、任务提交及理符／日常详情保留在原版日志和追踪器中。点击任务复制名称。");
         }
         finally { EndPanel(); }
     }

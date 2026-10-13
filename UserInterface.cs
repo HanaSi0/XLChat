@@ -178,9 +178,9 @@ internal sealed partial class UserInterface(Plugin plugin)
                     ImGui.PushID(index++);
                     if (item.Click is not null)
                     {
-                        if (ImGui.SmallButton(item.Label)) item.Click();
+                        if (ReadableText.SmallButton(item.Label)) item.Click();
                     }
-                    else { ImGui.AlignTextToFramePadding(); ImGui.TextUnformatted(item.Label); }
+                    else { ImGui.AlignTextToFramePadding(); ReadableText.TextUnformatted(item.Label); }
                     if (ImGui.IsItemHovered())
                     {
                         if (!string.IsNullOrEmpty(item.Tooltip)) ImGui.SetTooltip(item.Tooltip);
@@ -236,15 +236,16 @@ internal sealed partial class UserInterface(Plugin plugin)
 
     private void DrawStatus()
     {
-        ImGui.SetNextWindowSize(new Vector2(330, 115) * ImGuiHelpers.GlobalScale, ImGuiCond.FirstUseEver);
+        ImGui.SetNextWindowSize(new Vector2(330, 100) * ImGuiHelpers.GlobalScale, ImGuiCond.FirstUseEver);
         ImportLayout("status", "_Parameter", "Parameter");
         var visible = ImGui.Begin("状态###XLinUIStatus", WindowFlags);
         try
         {
             if (!visible || Plugin.Objects.LocalPlayer is not { } player) return;
+            ImGui.SetWindowFontScale(C.HudFontScale);
             Ready |= HudReady.Resources;
-            ImGui.TextColored(new Vector4(C.Tint, 1), player.Name.TextValue);
-            ImGui.SameLine(); ImGui.TextDisabled($"Lv.{player.Level}");
+            ReadableText.TextColored(new Vector4(C.Tint, 1), player.Name.TextValue);
+            ImGui.SameLine(); ReadableText.TextDisabled($"Lv.{player.Level}");
             ThinResource("HP", player.CurrentHp, player.MaxHp, C.Tint);
             if (player.ClassJob.RowId is >= 16 and <= 18) Resource("GP", player.CurrentGp, player.MaxGp);
             else if (player.ClassJob.RowId is >= 8 and <= 15) Resource("CP", player.CurrentCp, player.MaxCp);
@@ -252,7 +253,7 @@ internal sealed partial class UserInterface(Plugin plugin)
             if (!C.NativeCombatWidgets && Plugin.Targets.Target is ICharacter target)
             {
                 ImGui.Separator();
-                ImGui.TextUnformatted(target.Name.TextValue);
+                ReadableText.TextUnformatted(target.Name.TextValue);
                 Resource("目标 HP", target.CurrentHp, target.MaxHp);
             }
         }
@@ -270,7 +271,7 @@ internal sealed partial class UserInterface(Plugin plugin)
             if (!visible) return;
             foreach (var member in Plugin.Party)
             {
-                ImGui.TextUnformatted(member.Name.TextValue);
+                ReadableText.TextUnformatted(member.Name.TextValue);
                 Resource("HP", member.CurrentHP, member.MaxHP);
                 ImGui.Spacing();
             }
@@ -281,7 +282,7 @@ internal sealed partial class UserInterface(Plugin plugin)
     private void Resource(string label, uint current, uint maximum)
     {
         if (!C.TextOnly) ImGui.ProgressBar(maximum == 0 ? 0 : Math.Clamp((float)current / maximum, 0, 1), new Vector2(-1, 12 * ImGuiHelpers.GlobalScale), "");
-        ImGui.TextDisabled($"{label}   {current:N0} / {maximum:N0}");
+        ReadableText.TextDisabled($"{label}   {current:N0} / {maximum:N0}");
     }
 
     private void DrawChat()
@@ -310,14 +311,14 @@ internal sealed partial class UserInterface(Plugin plugin)
             {
                 if (sidebar)
                 {
-                    ImGui.TextColored(new Vector4(C.Tint, 1), "会话");
-                    ImGui.TextDisabled("自定义频道分类");
+                    ReadableText.TextColored(new Vector4(C.Tint, 1), "会话");
+                    ReadableText.TextDisabled("自定义频道分类");
                     ImGui.Separator();
                     foreach (var channel in C.Channels)
                     {
                         var unread = plugin.Unread.GetValueOrDefault(channel.Id);
                         var label = channel.Name + (unread > 0 ? $"  {unread}" : "") + "###" + channel.Id;
-                        if (ImGui.Selectable(label, plugin.ActiveChannel == channel.Id, ImGuiSelectableFlags.None, new Vector2(0, 32 * scale)))
+                        if (ReadableText.Selectable(label, plugin.ActiveChannel == channel.Id, ImGuiSelectableFlags.None, new Vector2(0, 32 * scale)))
                         {
                             plugin.ActiveChannel = channel.Id;
                             plugin.Unread[channel.Id] = 0;
@@ -326,11 +327,11 @@ internal sealed partial class UserInterface(Plugin plugin)
                         }
                     }
                     ImGui.Spacing();
-                    if (ImGui.Button("编辑分类", new Vector2(-1, 0))) SettingsOpen = true;
+                    if (ReadableText.Button("编辑分类", new Vector2(-1, 0))) SettingsOpen = true;
                     ImGui.Spacing();
                     var hide = C.HideOriginalChat;
-                    if (ImGui.Checkbox("隐藏原版聊天", ref hide)) { C.HideOriginalChat = hide; plugin.Save(); }
-                    ImGui.TextWrapped(C.ShowOriginalUi ? "关闭或折叠此窗口会恢复原版聊天。" : "全局隐藏已开启；顶部按钮可恢复原版 UI。");
+                    if (ReadableText.Checkbox("隐藏原版聊天", ref hide)) { C.HideOriginalChat = hide; plugin.Save(); }
+                    ReadableText.TextWrapped(C.ShowOriginalUi ? "关闭或折叠此窗口会恢复原版聊天。" : "全局隐藏已开启；顶部按钮可恢复原版 UI。");
                 }
             }
             finally { ImGui.EndChild(); }
@@ -339,8 +340,8 @@ internal sealed partial class UserInterface(Plugin plugin)
             try
             {
                 if (!conversation) { ChatVisible = false; return; }
-                ImGui.TextColored(new Vector4(C.Tint, 1), channelNow.Name);
-                ImGui.SameLine(); ImGui.TextDisabled(!C.ShowOriginalUi || C.HideOriginalChat ? "· 原版聊天已隐藏" : "· 原版聊天保留");
+                ReadableText.TextColored(new Vector4(C.Tint, 1), channelNow.Name);
+                ImGui.SameLine(); ReadableText.TextDisabled(!C.ShowOriginalUi || C.HideOriginalChat ? "· 原版聊天已隐藏" : "· 原版聊天保留");
                 ImGui.SetNextItemWidth(-1);
                 ImGui.InputTextWithHint("##history-search", "搜索发言人或消息", ref search, 128);
                 var height = Math.Max(80 * scale, ImGui.GetContentRegionAvail().Y - 110 * scale * C.ChatFontScale);
@@ -352,7 +353,7 @@ internal sealed partial class UserInterface(Plugin plugin)
                         var wasBottom = ImGui.GetScrollY() >= ImGui.GetScrollMaxY() - 8;
                         var rows = plugin.History.Where(m => (channelNow.Types.Count == 0 || channelNow.Types.Contains(m.Type)) &&
                             (search.Length == 0 || m.Sender.Contains(search, StringComparison.OrdinalIgnoreCase) || m.Text.Contains(search, StringComparison.OrdinalIgnoreCase))).ToArray();
-                        if (rows.Length == 0) ImGui.TextDisabled(search.Length == 0 ? "等待新消息…" : "没有匹配的消息。");
+                        if (rows.Length == 0) ReadableText.TextDisabled(search.Length == 0 ? "等待新消息…" : "没有匹配的消息。");
                         ChatLine? previous = null;
                         foreach (var line in rows)
                         {
@@ -360,10 +361,10 @@ internal sealed partial class UserInterface(Plugin plugin)
                             if (!group)
                             {
                                 if (previous is not null) { ImGui.Spacing(); if (!C.Compact) ImGui.Separator(); }
-                                ImGui.TextColored(new Vector4(C.Tint, 1), string.IsNullOrWhiteSpace(line.Sender) ? "系统" : line.Sender);
-                                ImGui.SameLine(); ImGui.TextDisabled($"{ChannelName(line.Type)} · {line.Time:HH:mm}");
+                                ReadableText.TextColored(new Vector4(C.Tint, 1), string.IsNullOrWhiteSpace(line.Sender) ? "系统" : line.Sender);
+                                ImGui.SameLine(); ReadableText.TextDisabled($"{ChannelName(line.Type)} · {line.Time:HH:mm}");
                             }
-                            ImGui.TextWrapped(line.Text);
+                            ReadableText.TextWrapped(line.Text);
                             if (!C.Compact) ImGui.Spacing();
                             previous = line;
                         }
@@ -375,13 +376,13 @@ internal sealed partial class UserInterface(Plugin plugin)
                 finally { ImGui.EndChild(); }
                 ImGui.SetNextItemWidth(95 * scale);
                 ImGui.Combo("##send-channel", ref sendChannel, sendNames, sendNames.Length);
-                ImGui.SameLine(); ImGui.Checkbox("跟随消息", ref follow);
+                ImGui.SameLine(); ReadableText.Checkbox("跟随消息", ref follow);
                 ImGui.SetNextItemWidth(Math.Max(80, ImGui.GetContentRegionAvail().X - 70 * scale));
                 var enter = ImGui.InputTextWithHint("##message", "输入消息，Enter 发送", ref draft, 500, ImGuiInputTextFlags.EnterReturnsTrue);
                 ImGui.SameLine();
-                if (ImGui.Button("发送") || enter) Send();
-                ImGui.TextDisabled("链接操作仍需使用原版聊天；可随时取消隐藏。");
-                if (notice.Length > 0) ImGui.TextWrapped(notice);
+                if (ReadableText.Button("发送") || enter) Send();
+                ReadableText.TextDisabled("链接操作仍需使用原版聊天；可随时取消隐藏。");
+                if (notice.Length > 0) ReadableText.TextWrapped(notice);
             }
             finally { ImGui.EndChild(); }
         }
@@ -435,125 +436,168 @@ internal sealed partial class UserInterface(Plugin plugin)
         try
         {
             if (!visible) return;
-            if (ImGui.Button("关闭设置")) SettingsOpen = false;
+            if (ReadableText.Button("关闭设置")) SettingsOpen = false;
             ImGui.SameLine();
-            if (ImGui.Button("应用现代风格预设"))
+            if (ReadableText.Button("应用现代风格预设"))
             {
                 C.ApplyModernPreset();
                 importedLayouts.Clear(); changed = true;
             }
 
-            ImGui.TextWrapped("/xlinui restore 恢复原版界面。/xlinui off 关闭新面板并恢复原版。技能 UI 固定直角。");
-            changed |= Toggle("启用 XLinUI", C.Enabled, v => C.Enabled = v);
-            changed |= Toggle("显示原游戏 UI（关闭为实验性全隐藏）", C.ShowOriginalUi, v => C.ShowOriginalUi = v);
-            ImGui.TextWrapped("已提供背包和任务概览；市场、任务对话等复杂操作仍使用原版窗口。隐藏全部原版 UI 后，可用顶部恢复按钮或 /xlinui restore 返回；打开快捷入口也会先恢复原版。");
-            changed |= Toggle("游戏原版热键栏与状态组件", C.NativeCombatWidgets, v => C.NativeCombatWidgets = v);
-            ImGui.TextWrapped("沿用原版所有热键栏、Buff/Debuff、职业量谱、目标和队伍布局与交互，不重画原版图标。HP/MP 使用简洁条。");
-            changed |= Toggle("简洁生命/魔力状态条", C.ShowStatus, v => C.ShowStatus = v);
-            changed |= Toggle("简洁目标面板（替换原版）", C.ModernTarget, v => C.ModernTarget = v);
-            changed |= Toggle("简洁焦点目标（替换原版）", C.ModernFocus, v => C.ModernFocus = v);
-            changed |= Toggle("简洁自身读条（替换原版）", C.ModernCast, v => C.ModernCast = v);
-            changed |= Toggle("简洁任务概览入口", C.ModernQuests, v => C.ModernQuests = v);
-            changed |= Toggle("简洁背包入口（保留原版完整操作）", C.ModernInventory, v => C.ModernInventory = v);
-            changed |= Toggle("简洁增益／减益（替换原版）", C.ModernStatuses, v => C.ModernStatuses = v);
-            changed |= Toggle("简洁队伍概览（保留原版队伍菜单）", C.ModernParty, v => C.ModernParty = v);
-            var iconSize = C.StatusIconSize;
-            if (ImGui.SliderFloat("状态图标大小", ref iconSize, 20, 48, "%.0f")) { C.StatusIconSize = iconSize; changed = true; }
-            ImGui.TextWrapped("目标、焦点、读条与状态只在替代面板成功绘制后隐藏原版。队伍概览暂保留原版名单的上下文菜单、排序与队长操作。右键状态需开启游戏交互，由游戏判定是否可取消。");
-
-            if (!C.NativeCombatWidgets) changed |= Toggle("备用队伍面板", C.ShowParty, v => C.ShowParty = v);
-            changed |= Toggle("采用读取到的原版布局", C.FollowGameLayout, v => C.FollowGameLayout = v);
-            if (ImGui.Button("重新应用已读取布局")) importedLayouts.Clear();
-            ImGui.TextDisabled($"已读取 {plugin.GameUi.Layouts.Count} 个已加载窗口，游戏 UI 比例 {plugin.GameUi.GameScale:F2}");
-            if (ImGui.TreeNode("已读取的原版窗口设置"))
+            if (ImGui.BeginTabBar("XLinUISettingsTabs"))
             {
-                foreach (var item in plugin.GameUi.Layouts.OrderBy(i => i.Key))
-                    ImGui.TextUnformatted($"{item.Key}: ({item.Value.X:F0}, {item.Value.Y:F0}) · 比例 {item.Value.Scale:F2} · 原先{(item.Value.Visible ? "显示" : "隐藏")}");
-                ImGui.TreePop();
-            }
-            changed |= Toggle("居中顶部状态栏", C.ShowTop, v => C.ShowTop = v);
-            changed |= Toggle("锁定窗口位置与尺寸", C.LockWindows, v => C.LockWindows = v);
-            changed |= Toggle("隐藏边框", C.HideBorders, v => C.HideBorders = v);
-            changed |= Toggle("纯文字模式（透明背景、隐藏边框）", C.TextOnly, v => C.TextOnly = v);
-            var cw = C.ChatWidth; var ch = C.ChatHeight;
-            if (ImGui.SliderFloat("聊天宽度", ref cw, 380, 1800, "%.0f")) { C.ChatWidth = cw; applyChatSize = true; changed = true; }
-            if (ImGui.SliderFloat("聊天高度", ref ch, 240, 1200, "%.0f")) { C.ChatHeight = ch; applyChatSize = true; changed = true; }
-            var sw = C.ChatSidebarWidth; var fs = C.ChatFontScale;
-            if (ImGui.SliderFloat("频道栏宽度", ref sw, 80, 250, "%.0f")) { C.ChatSidebarWidth = sw; changed = true; }
-            if (ImGui.SliderFloat("聊天字号比例", ref fs, .7f, 1.6f, "%.2f")) { C.ChatFontScale = fs; changed = true; }
-            changed |= Toggle("分类聊天", C.ShowChat, v => C.ShowChat = v);
-            changed |= Toggle("显示插件聊天时隐藏原版聊天", C.HideOriginalChat, v => C.HideOriginalChat = v);
-            ImGui.TextDisabled("折叠、关闭插件聊天或停用插件时恢复原版聊天。");
-            changed |= Toggle("所有已显示热键栏采用直角边框", C.SquareHotbars, v => C.SquareHotbars = v);
-            changed |= Toggle("小地图方形外框", C.SquareMinimap, v => C.SquareMinimap = v);
-            ImGui.TextWrapped("自动追踪 1–10 栏的原生槽位坐标与大小，无须选择单栏；保留原生冷却、拖放、快捷键与提示。小地图仍使用原生圆形内容，方框不改变地图裁切。");
-            changed |= Toggle("原生标准窗口统一色调与透明度（实验）", C.StyleNativeWindows, v => C.StyleNativeWindows = v);
-            ImGui.TextDisabled($"已显示热键栏 {plugin.NativeStyle.ActiveBars.Count} 个，已换肤窗口 {plugin.NativeStyle.StyledWindows.Count} 个");
-            if (ImGui.TreeNode("原生窗口适配审查／逐窗排除"))
-            {
-                foreach (var entry in plugin.GameUi.Layouts.OrderBy(i => i.Key))
+                try
                 {
-                    var excluded = C.ExcludedNativeWindows.Contains(entry.Key);
-                    if (ImGui.Checkbox($"保留原版外观##{entry.Key}", ref excluded))
-                    { if (excluded) C.ExcludedNativeWindows.Add(entry.Key); else C.ExcludedNativeWindows.Remove(entry.Key); changed = true; }
-                    ImGui.SameLine(); ImGui.TextUnformatted(entry.Key + (plugin.NativeStyle.StyledWindows.Contains(entry.Key) ? " · 标准窗口已适配" : HudGeometry.IsStandardHotbar(entry.Key) ? " · 原生热键栏" : " · 原生内容保留"));
-                }
-                ImGui.TreePop();
-            }
-            changed |= Toggle("其他 UI 使用圆角", C.Rounded, v => C.Rounded = v);
-            changed |= Toggle("显示面板背景", C.Glass, v => C.Glass = v);
-            ImGui.TextDisabled("本版无背景模糊；玻璃开关影响背景透明度。");
-            var opacity = C.Opacity;
-            if (ImGui.SliderFloat("背景不透明度", ref opacity, 0, 1, "%.2f")) { C.Opacity = opacity; changed = true; }
-            var tint = C.Tint;
-            if (ImGui.ColorEdit3("自定义色调", ref tint)) { C.Tint = tint; changed = true; }
-            changed |= Toggle("紧凑聊天间距", C.Compact, v => C.Compact = v);
-            ImGui.Separator();
-            ImGui.TextWrapped("游戏交互包括打开游戏窗口、发送聊天及读取/点击热键栏。国服 soil 接口须在本机验证；推荐用实际安装目录重新编译。");
-            changed |= Toggle("启用游戏交互", C.NativeInteractions, v => C.NativeInteractions = v);
-
-            if (ImGui.CollapsingHeader("顶部入口"))
-                foreach (var entry in Configuration.TopLabels)
-                    changed |= Toggle(entry.Value, C.TopSections.GetValueOrDefault(entry.Key, true), v => C.TopSections[entry.Key] = v);
-            if (ImGui.CollapsingHeader("聊天分类"))
-            {
-                ImGui.TextWrapped("每个分类可选择多个游戏频道。不选频道表示接收全部；删除分类不删除消息。");
-                Channel? remove = null;
-                foreach (var channel in C.Channels)
+                if (ImGui.BeginTabItem("外观"))
                 {
-                    ImGui.PushID(channel.Id);
                     try
                     {
-                        var name = channel.Name;
-                        if (ImGui.InputText("分类名称", ref name, 32)) { channel.Name = name; changed = true; }
-                        if (C.Channels.Count > 1)
+                    changed |= Toggle("锁定窗口位置与尺寸", C.LockWindows, v => C.LockWindows = v);
+                    changed |= Toggle("隐藏边框", C.HideBorders, v => C.HideBorders = v);
+                    changed |= Toggle("纯文字模式（透明背景、隐藏边框）", C.TextOnly, v => C.TextOnly = v);
+                    changed |= Toggle("其他 UI 使用圆角", C.Rounded, v => C.Rounded = v);
+                    changed |= Toggle("插件窗口强制无背景（保留图标与进度条）", C.ForceTransparentPanels, v => C.ForceTransparentPanels = v);
+                    changed |= Toggle("原版已适配窗口强制无背景", C.ForceTransparentNative, v => C.ForceTransparentNative = v);
+                    changed |= Toggle("文字细描边", C.TextOutline, v => C.TextOutline = v);
+                    changed |= Toggle("原版窗口文字描边", C.NativeTextOutline, v => C.NativeTextOutline = v);
+                    changed |= Toggle("提高次要文字对比度", C.HighContrastText, v => C.HighContrastText = v);
+                    changed |= Toggle("无状态时仍显示占位面板", C.ShowEmptyStatuses, v => C.ShowEmptyStatuses = v);
+                    var hudFont = C.HudFontScale;
+                    if (ImGui.SliderFloat("战斗 HUD 字号比例", ref hudFont, .8f, 1.6f, "%.2f")) { C.HudFontScale = hudFont; changed = true; }
+                    changed |= Toggle("显示面板背景", C.Glass, v => C.Glass = v);
+                    ReadableText.TextDisabled("强制无背景时不透明度滑块不生效；进度条和图标仍保留。未启用强制无背景时可调背景透明度。");
+                    var opacity = C.Opacity;
+                    if (ImGui.SliderFloat("背景不透明度", ref opacity, 0, 1, "%.2f")) { C.Opacity = opacity; changed = true; }
+                    var tint = C.Tint;
+                    if (ImGui.ColorEdit3("自定义色调", ref tint)) { C.Tint = tint; changed = true; }
+                    }
+                    finally { ImGui.EndTabItem(); }
+                }
+                if (ImGui.BeginTabItem("模块"))
+                {
+                    try
+                    {
+                    changed |= Toggle("启用 XLinUI", C.Enabled, v => C.Enabled = v);
+                    changed |= Toggle("显示原游戏 UI（关闭为实验性全隐藏）", C.ShowOriginalUi, v => C.ShowOriginalUi = v);
+                    changed |= Toggle("游戏原版热键栏与状态组件", C.NativeCombatWidgets, v => C.NativeCombatWidgets = v);
+                    changed |= Toggle("简洁生命/魔力状态条", C.ShowStatus, v => C.ShowStatus = v);
+                    changed |= Toggle("简洁目标面板（替换原版）", C.ModernTarget, v => C.ModernTarget = v);
+                    changed |= Toggle("简洁焦点目标（替换原版）", C.ModernFocus, v => C.ModernFocus = v);
+                    changed |= Toggle("简洁自身读条（替换原版）", C.ModernCast, v => C.ModernCast = v);
+                    changed |= Toggle("简洁任务概览入口", C.ModernQuests, v => C.ModernQuests = v);
+                    changed |= Toggle("简洁背包入口（保留原版完整操作）", C.ModernInventory, v => C.ModernInventory = v);
+                    changed |= Toggle("简洁增益／减益（替换原版）", C.ModernStatuses, v => C.ModernStatuses = v);
+                    changed |= Toggle("简洁队伍概览（保留原版队伍菜单）", C.ModernParty, v => C.ModernParty = v);
+                    var iconSize = C.StatusIconSize;
+                    if (ImGui.SliderFloat("状态图标大小", ref iconSize, 20, 48, "%.0f")) { C.StatusIconSize = iconSize; changed = true; }
+
+                    if (!C.NativeCombatWidgets) changed |= Toggle("备用队伍面板", C.ShowParty, v => C.ShowParty = v);
+                    changed |= Toggle("居中顶部状态栏", C.ShowTop, v => C.ShowTop = v);
+                    changed |= Toggle("启用游戏交互", C.NativeInteractions, v => C.NativeInteractions = v);
+                    }
+                    finally { ImGui.EndTabItem(); }
+                }
+                if (ImGui.BeginTabItem("聊天"))
+                {
+                    try
+                    {
+                    var cw = C.ChatWidth; var ch = C.ChatHeight;
+                    if (ImGui.SliderFloat("聊天宽度", ref cw, 380, 1800, "%.0f")) { C.ChatWidth = cw; applyChatSize = true; changed = true; }
+                    if (ImGui.SliderFloat("聊天高度", ref ch, 240, 1200, "%.0f")) { C.ChatHeight = ch; applyChatSize = true; changed = true; }
+                    var sw = C.ChatSidebarWidth; var fs = C.ChatFontScale;
+                    if (ImGui.SliderFloat("频道栏宽度", ref sw, 80, 250, "%.0f")) { C.ChatSidebarWidth = sw; changed = true; }
+                    if (ImGui.SliderFloat("聊天字号比例", ref fs, .7f, 1.6f, "%.2f")) { C.ChatFontScale = fs; changed = true; }
+                    changed |= Toggle("分类聊天", C.ShowChat, v => C.ShowChat = v);
+                    changed |= Toggle("显示插件聊天时隐藏原版聊天", C.HideOriginalChat, v => C.HideOriginalChat = v);
+                    ReadableText.TextDisabled("折叠、关闭插件聊天或停用插件时恢复原版聊天。");
+                    changed |= Toggle("紧凑聊天间距", C.Compact, v => C.Compact = v);
+                    if (ImGui.CollapsingHeader("聊天分类"))
+                    {
+                        ReadableText.TextWrapped("每个分类可选择多个游戏频道。不选频道表示接收全部；删除分类不删除消息。");
+                        Channel? remove = null;
+                        foreach (var channel in C.Channels)
                         {
-                            ImGui.SameLine(); if (ImGui.Button("删除")) remove = channel;
-                        }
-                        if (ImGui.TreeNode("关联游戏频道"))
-                        {
-                            foreach (var type in Enum.GetValues<XivChatType>().Distinct())
+                            ImGui.PushID(channel.Id);
+                            try
                             {
-                                var id = (ushort)type;
-                                var selected = channel.Types.Contains(id);
-                                if (ImGui.Checkbox($"{type} ({id})", ref selected))
+                                var name = channel.Name;
+                                if (ImGui.InputText("分类名称", ref name, 32)) { channel.Name = name; changed = true; }
+                                if (C.Channels.Count > 1)
                                 {
-                                    if (selected) channel.Types.Add(id); else channel.Types.Remove(id);
-                                    changed = true;
+                                    ImGui.SameLine(); if (ReadableText.Button("删除")) remove = channel;
+                                }
+                                if (ImGui.TreeNode("关联游戏频道"))
+                                {
+                                    foreach (var type in Enum.GetValues<XivChatType>().Distinct())
+                                    {
+                                        var id = (ushort)type;
+                                        var selected = channel.Types.Contains(id);
+                                        if (ReadableText.Checkbox($"{type} ({id})", ref selected))
+                                        {
+                                            if (selected) channel.Types.Add(id); else channel.Types.Remove(id);
+                                            changed = true;
+                                        }
+                                    }
+                                    ImGui.TreePop();
                                 }
                             }
-                            ImGui.TreePop();
+                            finally { ImGui.PopID(); }
                         }
+                        if (remove is not null)
+                        { C.Channels.Remove(remove); plugin.Unread.Remove(remove.Id); changed = true; }
+                        if (ReadableText.Button("添加分类")) { C.Channels.Add(new Channel("新分类", [])); changed = true; }
                     }
-                    finally { ImGui.PopID(); }
+                    ReadableText.TextDisabled("链接操作仍使用原版聊天。最多保留 1000 条消息，退出角色清空。");
+                    }
+                    finally { ImGui.EndTabItem(); }
                 }
-                if (remove is not null)
-                { C.Channels.Remove(remove); plugin.Unread.Remove(remove.Id); changed = true; }
-                if (ImGui.Button("添加分类")) { C.Channels.Add(new Channel("新分类", [])); changed = true; }
+                if (ImGui.BeginTabItem("顶部"))
+                {
+                    try
+                    {
+                    foreach (var entry in Configuration.TopLabels)
+                        changed |= Toggle(entry.Value, C.TopSections.GetValueOrDefault(entry.Key, true), v => C.TopSections[entry.Key] = v);
+                    }
+                    finally { ImGui.EndTabItem(); }
+                }
+                if (ImGui.BeginTabItem("原版适配"))
+                {
+                    try
+                    {
+                    changed |= Toggle("所有已显示热键栏采用直角边框", C.SquareHotbars, v => C.SquareHotbars = v);
+                    changed |= Toggle("小地图方形外框", C.SquareMinimap, v => C.SquareMinimap = v);
+                    ReadableText.TextWrapped("自动追踪 1–10 栏的原生槽位坐标与大小，无须选择单栏；保留原生冷却、拖放、快捷键与提示。小地图仍使用原生圆形内容，方框不改变地图裁切。");
+                    changed |= Toggle("原生标准窗口统一色调与透明度（实验）", C.StyleNativeWindows, v => C.StyleNativeWindows = v);
+                    ReadableText.TextDisabled($"已显示热键栏 {plugin.NativeStyle.ActiveBars.Count} 个，已换肤窗口 {plugin.NativeStyle.StyledWindows.Count} 个");
+                    if (ImGui.TreeNode("原生窗口适配审查／逐窗排除"))
+                    {
+                        foreach (var entry in plugin.GameUi.Layouts.OrderBy(i => i.Key))
+                        {
+                            var excluded = C.ExcludedNativeWindows.Contains(entry.Key);
+                            if (ReadableText.Checkbox($"保留原版外观##{entry.Key}", ref excluded))
+                            { if (excluded) C.ExcludedNativeWindows.Add(entry.Key); else C.ExcludedNativeWindows.Remove(entry.Key); changed = true; }
+                            ImGui.SameLine(); ReadableText.TextUnformatted(entry.Key + (plugin.NativeStyle.StyledWindows.Contains(entry.Key) ? " · 标准窗口已适配" : HudGeometry.IsStandardHotbar(entry.Key) ? " · 原生热键栏" : " · 原生内容保留"));
+                        }
+                        ImGui.TreePop();
+                    }
+                    changed |= Toggle("采用读取到的原版布局", C.FollowGameLayout, v => C.FollowGameLayout = v);
+                    if (ReadableText.Button("重新应用已读取布局")) importedLayouts.Clear();
+                    ReadableText.TextDisabled($"已读取 {plugin.GameUi.Layouts.Count} 个已加载窗口，游戏 UI 比例 {plugin.GameUi.GameScale:F2}");
+                    if (ImGui.TreeNode("已读取的原版窗口设置"))
+                    {
+                        foreach (var item in plugin.GameUi.Layouts.OrderBy(i => i.Key))
+                            ReadableText.TextUnformatted($"{item.Key}: ({item.Value.X:F0}, {item.Value.Y:F0}) · 比例 {item.Value.Scale:F2} · 原先{(item.Value.Visible ? "显示" : "隐藏")}");
+                        ImGui.TreePop();
+                    }
+                    }
+                    finally { ImGui.EndTabItem(); }
+                }
+                }
+                finally { ImGui.EndTabBar(); }
             }
             ImGui.Separator();
-            ImGui.TextWrapped("聊天目前以纯文本显示，物品/地图/玩家链接仍需在原版聊天点击；支持普通频道发送，暂不支持指定私信收件人。聊天最多保留 1000 条，不写入磁盘，退出角色后清空。");
-            if (ImGui.Button("恢复默认设置")) { plugin.Reset(); changed = false; }
+            ReadableText.TextDisabled("/xlinui off 完全恢复原版；/xlinui restore 取消全局与聊天隐藏。");
+            if (ReadableText.Button("恢复默认设置")) { plugin.Reset(); changed = false; }
         }
         finally
         {
@@ -564,7 +608,7 @@ internal sealed partial class UserInterface(Plugin plugin)
 
     private static bool Toggle(string name, bool value, Action<bool> setter)
     {
-        if (!ImGui.Checkbox(name, ref value)) return false;
+        if (!ReadableText.Checkbox(name, ref value)) return false;
         setter(value); return true;
     }
 
@@ -588,26 +632,26 @@ internal sealed partial class UserInterface(Plugin plugin)
             ImGui.PushStyleVar(ImGuiStyleVar.WindowRounding, c.Rounded ? 10 : 0);
             ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, c.Rounded ? 8 : 0);
             ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, c.Rounded ? 6 : 0);
-            ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(16, 14));
+            ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(8, 5));
             ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(10, 6));
-            ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(10, 8));
+            ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(8, 5));
             ImGui.PushStyleVar(ImGuiStyleVar.WindowBorderSize, c.HideBorders || c.TextOnly ? 0 : 1);
             ImGui.PushStyleVar(ImGuiStyleVar.ChildBorderSize, c.HideBorders || c.TextOnly ? 0 : 1);
             ImGui.PushStyleVar(ImGuiStyleVar.FrameBorderSize, c.HideBorders || c.TextOnly ? 0 : 1);
             var tint = c.Tint;
-            ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(new Vector3(.035f, .045f, .065f) + tint * .04f, c.TextOnly || !c.Glass ? 0 : c.Opacity));
+            ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(new Vector3(.035f, .045f, .065f) + tint * .04f, SurfacePolicy.PanelAlpha(c.ForceTransparentPanels, c.TextOnly, c.Glass, c.Opacity)));
             ImGui.PushStyleColor(ImGuiCol.ChildBg, Vector4.Zero);
-            ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(tint * .24f, c.TextOnly ? 0 : .85f));
+            ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(tint * .24f, c.ForceTransparentPanels || c.TextOnly ? 0 : .6f));
             ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(tint * .45f, 1));
             ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(tint * .6f, 1));
             ImGui.PushStyleColor(ImGuiCol.Header, new Vector4(tint * .35f, .8f));
             ImGui.PushStyleColor(ImGuiCol.CheckMark, new Vector4(tint, 1));
             ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(.24f, .29f, .35f, .65f));
-            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(.91f, .94f, .98f, 1));
-            ImGui.PushStyleColor(ImGuiCol.TextDisabled, new Vector4(.59f, .65f, .73f, 1));
-            ImGui.PushStyleColor(ImGuiCol.FrameBg, new Vector4(.08f, .10f, .14f, c.TextOnly ? 0 : .95f));
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(.96f, .98f, 1, 1));
+            ImGui.PushStyleColor(ImGuiCol.TextDisabled, c.HighContrastText ? new Vector4(.83f, .88f, .92f, 1) : new Vector4(.59f, .65f, .73f, 1));
+            ImGui.PushStyleColor(ImGuiCol.FrameBg, new Vector4(.08f, .10f, .14f, c.ForceTransparentPanels || c.TextOnly ? .10f : .95f));
             ImGui.PushStyleColor(ImGuiCol.TitleBg, new Vector4(.055f, .07f, .10f, .95f));
-            ImGui.PushStyleColor(ImGuiCol.TitleBgActive, new Vector4(.08f, .10f, .14f, c.TextOnly ? 0 : .95f));
+            ImGui.PushStyleColor(ImGuiCol.TitleBgActive, new Vector4(.08f, .10f, .14f, c.ForceTransparentPanels || c.TextOnly ? .10f : .95f));
             ImGui.PushStyleColor(ImGuiCol.PlotHistogram, new Vector4(tint, .9f));
             ImGui.PushStyleColor(ImGuiCol.Separator, new Vector4(.24f, .29f, .35f, c.TextOnly ? 0 : .6f));
         }

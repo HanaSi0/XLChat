@@ -17,6 +17,7 @@ internal sealed unsafe class NativeUiStyling : IDisposable
     internal readonly Dictionary<string, int> ActiveBars = [];
     internal readonly HashSet<string> StyledWindows = [];
     private readonly NativeAppearanceState originals = new();
+    private readonly NativeTextState textOriginals = new();
     private long heartbeat;
     private bool rendering;
     internal void Register()
@@ -46,6 +47,7 @@ internal sealed unsafe class NativeUiStyling : IDisposable
     private void OnFinalize(AddonEvent type, AddonArgs args)
     {
         originals.Forget(args.AddonName);
+        textOriginals.Forget(args.AddonName);
         ActiveBars.Remove(args.AddonName); StyledWindows.Remove(args.AddonName);
     }
     private void Apply(AtkUnitBase* addon, bool live, bool collect)
@@ -74,14 +76,16 @@ internal sealed unsafe class NativeUiStyling : IDisposable
         if (name == "_PartyList")
         {
             var background = (AtkResNode*)((AddonPartyList*)addon)->BackgroundNineGridNode;
-            if (background != null) Change(addon, background, live && visible && c.StyleNativeWindows && !c.ExcludedNativeWindows.Contains(name), false);
+            if (background != null) Change(addon, background, live && visible && (c.StyleNativeWindows || c.ForceTransparentNative) && !c.ExcludedNativeWindows.Contains(name), false);
+            var budget = 4096;
+            WalkText(addon, &addon->UldManager, live && visible && c.NativeTextOutline && !c.ExcludedNativeWindows.Contains(name), 0, ref budget);
         }
         if (collect && live && visible && c.SquareMinimap && !c.ExcludedNativeWindows.Contains(name) && name == "_NaviMap")
         {
             var map = (AddonNaviMap*)addon;
             AddOutline(name, map->MapBase != null ? (AtkResNode*)map->MapBase : addon->RootNode, 0);
         }
-        if (!(live && visible && c.StyleNativeWindows) && !originals.Contains(name)) return;
+        if (!(live && visible && (c.StyleNativeWindows || c.ForceTransparentNative || c.NativeTextOutline)) && !originals.Contains(name) && !textOriginals.Contains(name)) return;
         // Only style standard Window components, never icons, gauges, list rows or collision nodes.
         var list = addon->UldManager.NodeList;
         for (var i = 0; list != null && i < Math.Min((int)addon->UldManager.NodeListCount, 2048); i++)
@@ -95,11 +99,13 @@ internal sealed unsafe class NativeUiStyling : IDisposable
             for (var j = 0; nodes != null && j < Math.Min((int)component->UldManager.NodeListCount, 256); j++)
             {
                 var part = nodes[j];
-                if (part == null || part->Type != NodeType.NineGrid) continue;
-                var enabled = live && visible && c.StyleNativeWindows && !c.ExcludedNativeWindows.Contains(name);
+                if (part == null || part->Type != NodeType.NineGrid || part->ChildNode != null) continue;
+                var enabled = live && visible && (c.StyleNativeWindows || c.ForceTransparentNative) && !c.ExcludedNativeWindows.Contains(name);
                 Change(addon, part, enabled, false);
                 styled |= enabled;
             }
+            var textBudget = 4096;
+            WalkText(addon, &component->UldManager, live && visible && c.NativeTextOutline && !c.ExcludedNativeWindows.Contains(name), 0, ref textBudget);
             if (styled && collect) StyledWindows.Add(name);
             if (styled && collect && !c.HideBorders && !c.TextOnly) AddOutline(name, node, c.Rounded ? 6 : 0);
         }
@@ -112,8 +118,8 @@ internal sealed unsafe class NativeUiStyling : IDisposable
         {
             var c = Plugin.InstanceConfig;
             var saved = originals.Original(addon->NameString, (nint)addon, (nint)node, current);
-            var alpha = hide || c.TextOnly || !c.Glass ? (byte)0 : (byte)(saved.Alpha * c.Opacity);
-            desired = hide ? saved with { Alpha = 0 } : new NativeAppearance(alpha,
+            var alpha = hide ? (byte)0 : SurfacePolicy.NativeAlpha(saved.Alpha, c.ForceTransparentNative, c.TextOnly, c.Glass, c.Opacity);
+            desired = hide || c.ForceTransparentNative || !c.StyleNativeWindows ? saved with { Alpha = alpha } : new NativeAppearance(alpha,
                 (byte)(45 + c.Tint.X * 45), (byte)(45 + c.Tint.Y * 45), (byte)(45 + c.Tint.Z * 45));
         }
         var change = originals.Change(addon->NameString, (nint)addon, (nint)node, current, desired);
@@ -122,6 +128,32 @@ internal sealed unsafe class NativeUiStyling : IDisposable
             if (node->Color.A == value.Alpha && node->MultiplyRed == value.Red && node->MultiplyGreen == value.Green && node->MultiplyBlue == value.Blue) return;
             node->Color.A = value.Alpha; node->MultiplyRed = value.Red; node->MultiplyGreen = value.Green; node->MultiplyBlue = value.Blue;
             node->IsDirty = true;
+        }
+    }
+    private void WalkText(AtkUnitBase* addon, AtkUldManager* manager, bool enabled, int depth, ref int budget)
+    {
+        if (depth > 6 || manager == null || manager->NodeList == null) return;
+        for (var i = 0; i < Math.Min((int)manager->NodeListCount, 2048) && budget > 0; i++)
+        {
+            budget--;
+            var node = manager->NodeList[i];
+            if (node == null) continue;
+            if (node->Type == NodeType.Text)
+            {
+                var text = (AtkTextNode*)node;
+                var current = new TextAppearance(text->EdgeColor.RGBA, (ushort)text->TextFlags);
+                var change = textOriginals.Change(addon->NameString, (nint)addon, (nint)node, current, enabled);
+                if (change is { } value && (text->EdgeColor.RGBA != value.EdgeColor || (ushort)text->TextFlags != value.Flags))
+                {
+                    text->EdgeColor.RGBA = value.EdgeColor; text->TextFlags = (TextFlags)value.Flags;
+                    node->IsDirty = true;
+                }
+            }
+            else if ((int)node->Type >= 1000)
+            {
+                var component = node->GetComponent();
+                if (component != null) WalkText(addon, &component->UldManager, enabled, depth + 1, ref budget);
+            }
         }
     }
     private void AddOutline(string name, AtkResNode* node, float radius)
@@ -137,7 +169,7 @@ internal sealed unsafe class NativeUiStyling : IDisposable
     {
         rendering = false; Update();
         Plugin.Addons.UnregisterListener(OnDraw); Plugin.Addons.UnregisterListener(OnFinalize);
-        originals.Clear();
+        originals.Clear(); textOriginals.Clear();
     }
 }
 internal sealed record NativeOutline(string Name, Vector2 Position, Vector2 Size, float Radius);
