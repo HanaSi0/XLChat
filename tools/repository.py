@@ -10,14 +10,14 @@ parser=argparse.ArgumentParser()
 parser.add_argument('--check',action='store_true')
 args=parser.parse_args()
 if args.check:
-    with zipfile.ZipFile(root/'dist/XLinUI.zip') as archive:
-        manifest=json.loads(archive.read('XLinUI.json'))
+    with zipfile.ZipFile(root/'dist/XLChat.zip') as archive:
+        manifest=json.loads(archive.read('XLChat.json'))
 else:
-    manifest=json.loads((root/'bin/Release/XLinUI/XLinUI.json').read_text())
+    manifest=json.loads((root/'XLChat/bin/Release/XLChat/XLChat.json').read_text())
 version=manifest['AssemblyVersion']
-assert version.endswith('.0') and manifest['InternalName']=='XLinUI'
+assert version.endswith('.0') and manifest['InternalName']=='XLChat'
 assert manifest['DalamudApiLevel']==15
-url=f"https://github.com/HanaSi0/XLinUI/releases/download/v{version[:-2]}/XLinUI.zip"
+url=f"https://github.com/HanaSi0/XLChat/releases/download/v{version[:-2]}/XLChat.zip"
 entry=dict(manifest)
 entry.update(DownloadLinkInstall=url,DownloadLinkUpdate=url,DownloadLinkTesting=url,
              IsHide=False,IsTestingExclusive=False,LastUpdate=int(time.time()))

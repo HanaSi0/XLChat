@@ -1,0 +1,7 @@
+XLChat is derived from ChatTwo by Infi and Anna.
+Original source: https://github.com/Infiziert90/ChatTwo
+Upstream revision: 4046d82427f4859d53ddfeb71cf22785a1e709d9
+Modifications by HanaSi0. Licensed under the EUPL, Version 1.2.
+Modifications: project/assembly/UI/commands renamed to XLChat; GIF decoder and SQLite dependency updated; changelog output disabled.
+Modification date: 2026-10-13.
+StbImageSharp 2.30.16 is distributed under its Unlicense option.
