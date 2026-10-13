@@ -51,6 +51,7 @@ public sealed class Plugin : IDalamudPlugin
     private readonly OriginalChatVisibility originalChat = new();
     internal readonly GameUiController GameUi = new();
     internal readonly NativeUiStyling NativeStyle = new();
+    internal readonly NativeHotbarLayouts Hotbars = new();
 
     public Plugin()
     {
@@ -67,6 +68,7 @@ public sealed class Plugin : IDalamudPlugin
         originalChat.Register();
         GameUi.Register();
         NativeStyle.Register();
+        Hotbars.Register();
         Interface.UiBuilder.Draw += Draw;
         Interface.UiBuilder.OpenConfigUi += OpenSettings;
         Interface.UiBuilder.OpenMainUi += OpenSettings;
@@ -128,10 +130,11 @@ public sealed class Plugin : IDalamudPlugin
         }
         wasLoggedIn = loggedIn;
         var drawn = false;
-        try { ui.Draw(loggedIn); drawn = true; }
+        try { Hotbars.Update(loggedIn && Config.Enabled && !GameGui.GameUiHidden);ui.Draw(loggedIn); drawn = true; }
         finally
         {
             GameUi.Ready = drawn && Config.Enabled && !GameGui.GameUiHidden ? ui.Ready : HudReady.None;
+            if(!drawn)Hotbars.Release();
             NativeStyle.Rendered(drawn && loggedIn && Config.Enabled && !GameGui.GameUiHidden);
             var hideAll = drawn && loggedIn && Config.Enabled && !Config.ShowOriginalUi;
             if (hideAll)
@@ -165,6 +168,7 @@ public sealed class Plugin : IDalamudPlugin
     {
         Framework.Update -= OnUpdate;
         ui.DisposeAssets();
+        Hotbars.Dispose();
         originalChat.Dispose();
         NativeStyle.Dispose();
         GameUi.Dispose();

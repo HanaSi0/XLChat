@@ -53,6 +53,7 @@ internal sealed partial class UserInterface(Plugin plugin)
     internal void ClearInput()
     {
         draft = search = tellRecipient = ""; importedLayouts.Clear();
+        hotbarEditing=false;
         channelDrafts.Clear();filteredChat.Clear();chatCacheRevision=-1;ChatAtBottom=false;chatLabels=null;chatSubmitted=default;noviceJoinSubmitted=default;notice="";expandedChatRows=0;
         bagSlots.Clear(); bagCapacity = 0; bagAvailable = false; lastInventoryRead = default;
         acceptedQuests.Clear(); lastQuestRead = default;
@@ -71,6 +72,7 @@ internal sealed partial class UserInterface(Plugin plugin)
         {
             DrawNativeOutlines();
             DrawCombatHud();
+            DrawHotbarEditor();
             if (C.ShowTop || !C.ShowOriginalUi) DrawTop();
             if (C.ShowStatus) DrawStatus();
             if (C.ShowParty && !C.NativeCombatWidgets) DrawParty();
@@ -274,6 +276,11 @@ internal sealed partial class UserInterface(Plugin plugin)
                         DrawChatCustomization(ref changed);
                     }
                     finally { ImGui.EndTabItem(); }
+                }
+                if(ImGui.BeginTabItem("热键栏"))
+                {
+                    try{DrawHotbarSettings(ref changed);}
+                    finally{ImGui.EndTabItem();}
                 }
                 if (ImGui.BeginTabItem("顶部"))
                 {

@@ -115,6 +115,11 @@ public sealed class Configuration : IPluginConfiguration
     public bool NativeInteractions { get; set; }
     public float Opacity { get; set; } = .88f;
     public Vector3 Tint { get; set; } = new(.39f, .77f, .73f);
+    public bool UseHotbarLayouts { get; set; }
+    public float HotbarGrid { get; set; }=16;
+    public bool ShowHotbarGrid { get; set; }=true;
+    [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
+    public Dictionary<string,HotbarLayout> HotbarLayouts { get; set; }=[];
     public int Hotbar { get; set; }
     public float SkillSize { get; set; } = 44;
     [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
@@ -199,6 +204,12 @@ public sealed class Configuration : IPluginConfiguration
         ChatFontScale = float.IsFinite(ChatFontScale) ? Math.Clamp(ChatFontScale, .6f, 2.5f) : 1;
         SkillSize = float.IsFinite(SkillSize) ? Math.Clamp(SkillSize, 32, 72) : 44;
         Hotbar = Math.Clamp(Hotbar, 0, 9);
+        HotbarGrid=Bound(HotbarGrid,4,64,16);HotbarLayouts??=[];
+        foreach(var key in new List<string>(HotbarLayouts.Keys))
+        {
+            var valid=false;for(var i=0;i<10;i++)if(key==HotbarPolicy.Name(i)){valid=true;break;}
+            if(!valid||HotbarLayouts[key] is null)HotbarLayouts.Remove(key);else HotbarLayouts[key].Normalize();
+        }
         Tint = new Vector3(Clamp(Tint.X), Clamp(Tint.Y), Clamp(Tint.Z));
         Shortcuts ??= DefaultShortcuts();
         Channels ??= DefaultChannels();

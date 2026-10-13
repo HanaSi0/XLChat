@@ -1,3 +1,4 @@
+using System.Numerics;
 using System.Linq;
 using System;
 using XLinUI;
@@ -119,3 +120,24 @@ var unpinned=TopBarLayout.Arrange(500,8,new float[]{80,80},Array.Empty<float>())
 Check(Math.Abs(unpinned.Slots[^1].X+unpinned.Slots[^1].Width-500)<.01f,"shortcuts use full width when pinned items hidden");
 var rightOnly=TopBarLayout.Arrange(500,8,Array.Empty<float>(),new float[]{80,80});
 Check(rightOnly.Slots[0].X>300&&rightOnly.Rows==1,"right only toolbar retains right alignment");
+
+Check(HotbarPolicy.Name(0)=="_ActionBar"&&HotbarPolicy.Name(9)=="_ActionBar09","standard native hotbar mapping includes all ten addons");
+Check(HotbarPolicy.Position(new(33,47),new(40),new(1920,1080),16,true)==new Vector2(32,48),"shift grid snaps both axes to nearest intersection");
+Check(HotbarPolicy.Position(new(33,47),new(40),new(1920,1080),16,false)==new Vector2(33,47),"free drag retains one pixel precision without Shift");
+Check(HotbarPolicy.Position(new(1900,1070),new(100),new(1920,1080),16,true)==new Vector2(1820,980),"snapping cannot move bars off screen");
+Check(HotbarPolicy.Position(new(float.NaN,-30),new(3000,2000),new(1920,1080),float.NaN,true)==Vector2.Zero,"invalid coordinates and oversized bars stay bounded");
+Check(HotbarPolicy.VisibilityCommand(9,true,out var showBar)&&showBar=="/hotbar display 10 on"&&!HotbarPolicy.VisibilityCommand(10,true,out _),"visibility uses fixed validated game command for one to ten bars");
+var bounds=new (Vector2 Position,Vector2 Size)[]{(new(100,100),new(400,40)),(new(100,58),new(400,40))};
+Check(HotbarPolicy.Handle(new(100,100),new(400,40),new(1920,1080),105,22,bounds,out var dragHandle)&&dragHandle.Y==142,"drag handles avoid slots in adjacent stacked bars");
+var fullBounds=new (Vector2 Position,Vector2 Size)[]{(Vector2.Zero,new(1920,1080))};
+Check(!HotbarPolicy.Handle(Vector2.Zero,new(1920,1080),new(1920,1080),105,22,fullBounds,out _),"no free handle area never overlays full screen skill slots");
+
+var transforms=new NativeHotbarState();transforms.Original("_ActionBar",1,2,new(100,200),1);transforms.Original("_ActionBar",1,2,new(300,400),1.5f);
+var restoredBar=transforms.Restore("_ActionBar",1,2);
+Check(restoredBar?.Position==new Vector2(100,200)&&restoredBar.Scale==1,"restoring after repeated edits retains first native position and scale");
+transforms.Original("_ActionBar",1,2,new(100,200),1);
+Check(transforms.Restore("_ActionBar",3,4) is null,"recreated native bars never receive stale transforms");
+transforms.Original("_ActionBar",1,2,new(100,200),1);transforms.Forget("_ActionBar");
+Check(transforms.Restore("_ActionBar",1,2) is null,"finalizing hotbar forgets owned native transform");
+transforms.Original("_ActionBar",1,2,new(100,200),1);transforms.Original("_ActionBar09",3,4,new(600,900),.8f);
+Check(transforms.Restore("_ActionBar",1,2)?.Scale==1&&transforms.Restore("_ActionBar09",3,4)?.Scale==.8f,"multiple bars restore independent originals");

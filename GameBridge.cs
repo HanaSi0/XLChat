@@ -29,6 +29,16 @@ internal static unsafe class GameBridge
         if(proxy==null||(proxy->Flags&1)!=0)return false;
         proxy->SendJoinRequest();return true;
     }
+    internal static void OpenHudEditor()
+    {var editor=AgentHUDLayout.Instance();if(editor!=null)editor->Show();}
+    internal static void OpenSkillList()
+    {var commands=Plugin.Data.GetExcelSheet<Lumina.Excel.Sheets.MainCommand>();foreach(var row in commands)if(row.Name.ToString() is "技能与特性" or "Actions & Traits"){Open(row.RowId);return;}}
+    internal static bool SetHotbarVisible(int index,bool visible)
+    {
+        if(!HotbarPolicy.VisibilityCommand(index,visible,out var command))return false;
+        var module=UIModule.Instance();if(module==null)return false;
+        using var entry=new Utf8String();entry.SetString(command);module->ProcessChatBoxEntry(&entry,saveToHistory:false);return true;
+    }
     internal static bool MainCommandEnabled(uint id)
     {
         var hud = AgentHUD.Instance();

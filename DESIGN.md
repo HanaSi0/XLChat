@@ -127,3 +127,16 @@ TopBarLayout 为纯托管布局函数，右侧最多使用可用宽度 48%，各
 ## v0.10.1 新手频道加入
 
 聊天输入区增加 compact SmallButton，字号为聊天字号的 85%，右侧空间不足时换行。ChatShowNoviceJoin 默认 true，可独立持久化并加入 ChatLayoutProfile。使用随附结构的 InfoProxyNoviceNetwork.Flags bit 0 读取成员状态，SendJoinRequest 提交真正加入请求，保留 NativeInteractions 开关与 Native 异常处理。请求有 5 秒防重复窗口，已加入时不发送请求；不自动发送、不改变当前发送频道、不强制添加消息分类。日志与游戏提示反馈权限或满员结果。新增配置及档案恢复测试，总计 96 项通过；soil 接口响应仍需实机验证。
+
+
+## v0.11.0 原生热键栏布局编辑
+
+NativeHotbarLayouts 读取 _ActionBar 及 _ActionBar01–09。仅通过 AtkUnitBase.SetPosition/SetScale 调整整个原生 addon，保留 slot ComponentDragDrop、快捷键、技能动作、冷却、鼠标命中和提示。原生 6 种排列与共享/键位通过原版 HUD/角色设置处理，不伪造未知回调或重写槽位数据。激活更多栏使用严格验证的 /hotbar display 1–10 on/off 固定命令。
+
+HotbarLayouts 为按原生 addon 名称索引的独立本机位置/缩放配置，默认关闭接管，显式导入后应用。NativeHotbarState 按 addon/root 双身份保存首次位置与缩放；恢复时验证身份，PreFinalize 忘记 snapshot，卸载、禁用、失去渲染或交互开关恢复。失败时暂停控制并记录 xllog，不持续重试故障接口。
+
+编辑拖柄是独立 ImGui 小窗口，仅放在不与任何原生热键栏矩形相交的邻接位置；无空闲位置时不显示拖柄。没有覆盖技能格的 ImGui 拖放目标。Shift 将锚点吸附到网格，Ctrl 多选按共同 delta 移动；屏幕边界限制逐栏生效。拖动完成保存一次；数值微调与连续缩放通过设置保存。
+
+原版 HUD 编辑激活时释放插件控制并关闭 UseHotbarLayouts，避免旧配置覆盖游戏编辑结果；完成后显式重新导入。打开技能/原版 HUD 时恢复原版 UI 显示，技能锁定由玩家手动更改。插件不调用 SetAndSaveSlot，不自动重排或解锁技能。
+
+新增 12 项命名、网格、边界、固定命令、拖柄避让、快照身份与恢复测试，2 项配置测试，累计 110 项通过。浏览器验证 Shift 吸附、独立缩放、拖柄开关和技能拖放，仅为模拟验证；云环境无法验证 soil 的实际 AtkUnitBase 接口和原生拖放。

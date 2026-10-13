@@ -5,7 +5,7 @@
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <Nullable>enable</Nullable>
   </PropertyGroup>
-  <ItemGroup>
+  <ItemGroup><Compile Include="../../HotbarPolicy.cs"/>
     <Compile Include="../../Configuration.cs" /><Compile Include="../../ChatPolicy.cs" /><Compile Include="../../ChatProfile.cs" />
     <Reference Include="Dalamud"><HintPath>$(DALAMUD_HOME)/Dalamud.dll</HintPath></Reference>
     <Reference Include="Newtonsoft.Json"><HintPath>$(DALAMUD_HOME)/Newtonsoft.Json.dll</HintPath></Reference>

@@ -98,3 +98,10 @@ if(noviceCopy.ChatShowNoviceJoin)throw new Exception("Novice button visibility d
 var noviceProfile=ChatLayoutProfile.Capture(noviceSetting);noviceCopy.ChatShowNoviceJoin=true;noviceProfile.Apply(noviceCopy);
 if(noviceCopy.ChatShowNoviceJoin)throw new Exception("Novice button profile did not restore");
 Console.WriteLine("PASS: novice join button visibility persists and follows chat layout profiles");
+
+var savedBars=new Configuration{UseHotbarLayouts=true,HotbarGrid=float.NaN};savedBars.HotbarLayouts["_ActionBar"]=new(){Position=new(700,900),Scale=1.15f};savedBars.HotbarLayouts["_ActionBar09"]=new(){Position=new(-1,float.NaN),Scale=50,Enabled=false};savedBars.HotbarLayouts["_NotHotbar"]=new();
+var barCopy=JsonConvert.DeserializeObject<Configuration>(JsonConvert.SerializeObject(savedBars))!;barCopy.Normalize();
+if(barCopy.HotbarLayouts.Count!=2||barCopy.HotbarLayouts["_ActionBar"].Scale!=1.15f||barCopy.HotbarLayouts["_ActionBar09"].Scale!=2||barCopy.HotbarLayouts["_ActionBar09"].Position!=System.Numerics.Vector2.Zero||barCopy.HotbarLayouts["_ActionBar09"].Enabled||barCopy.HotbarGrid!=16)throw new Exception("Multi hotbar settings failed");
+Console.WriteLine("PASS: multiple native layouts persist independently with invalid geometry recovered");
+if(JsonConvert.DeserializeObject<Configuration>("{}")!.UseHotbarLayouts)throw new Exception("Legacy hotbars automatically overridden");
+Console.WriteLine("PASS: existing installations keep native hotbar layouts until explicitly imported");
