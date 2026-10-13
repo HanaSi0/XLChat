@@ -43,22 +43,11 @@ public sealed class About : ISettingsTab
         ImGui.SameLine();
         ImGui.TextColored(ImGuiColors.ParsedGold, Plugin.Interface.Manifest.Author);
 
-        ImGui.TextUnformatted(Language.Options_About_Discord);
-        ImGui.SameLine();
-        ImGui.TextColored(ImGuiColors.ParsedGold, "@infi");
-
         ImGui.TextUnformatted(Language.Options_About_Version);
         ImGui.SameLine();
         ImGui.TextColored(ImGuiColors.ParsedOrange, Plugin.Interface.Manifest.AssemblyVersion.ToString(3));
 
         ImGuiHelpers.ScaledDummy(10.0f);
-
-        ImGui.TextUnformatted(Language.Options_About_Discord_Thread);
-        ImGui.SameLine();
-        if (ImGuiUtil.IconButton(FontAwesomeIcon.ExternalLinkAlt, "discordThread"))
-            Dalamud.Utility.Util.OpenLink("https://canary.discord.com/channels/581875019861328007/1224865018789761126");
-
-        ImGui.Spacing();
 
         ImGui.TextUnformatted(Language.Options_About_Github_Issues);
         ImGui.SameLine();
@@ -66,13 +55,6 @@ public sealed class About : ISettingsTab
             Dalamud.Utility.Util.OpenLink("https://github.com/HanaSi0/XLChat/issues");
 
         ImGuiHelpers.ScaledDummy(10.0f);
-
-        ImGui.TextUnformatted(Language.Options_About_CrowdIn);
-        ImGui.SameLine();
-        if (ImGuiUtil.IconButton(FontAwesomeIcon.ExternalLinkAlt, "crowdin"))
-            Dalamud.Utility.Util.OpenLink("https://crowdin.com/project/chattwo");
-
-        ImGui.Spacing();
 
         var height = ImGui.GetContentRegionAvail().Y - ImGui.CalcTextSize("A").Y - ImGui.GetStyle().ItemSpacing.Y * 2;
         using (var aboutChild = ImRaii.Child("about", new Vector2(-1, height)))
