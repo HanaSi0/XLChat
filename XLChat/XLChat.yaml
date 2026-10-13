@@ -1,7 +1,11 @@
 name: XLChat
 author: HanaSi0
 punchline: 中国服特供聊天插件，基于 Chat Two 重建。
-description: XLChat 为中国服特供聊天插件，基于 Chat Two 源码重建并继续开发。Chat Two 原作者为 Infi、Anna，原项目：https://github.com/Infiziert90/ChatTwo。XLChat 由 HanaSi0 维护，当前按国服 soil XIVLauncher / Dalamud API 15 构建，实际国服兼容性以游戏内运行结果为准。沿用源码遵循 EUPL 1.2。
+description: |-
+  XLChat 为中国服特供聊天插件，基于 Chat Two 源码重建并继续开发。Chat Two 原作者为 Infi、Anna，原项目：https://github.com/Infiziert90/ChatTwo。XLChat 由 HanaSi0 维护，当前按国服 soil XIVLauncher / Dalamud API 15 构建，实际国服兼容性以游戏内运行结果为准。沿用源码遵循 EUPL 1.2。
+
+  Thanks to
+  The original dev Anna~
 repo_url: https://github.com/HanaSi0/XLChat
 accepts_feedback: true
 tags:
