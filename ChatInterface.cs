@@ -53,8 +53,8 @@ internal sealed partial class UserInterface
         }
         else { ImGui.SetNextWindowPos(viewport.Pos+new Vector2(30,150)*scale,applyChatPosition?ImGuiCond.Always:ImGuiCond.FirstUseEver);ImportLayout("chat","ChatLog"); }
         applyChatPosition=false;
-        var alpha=C.ChatBackground switch {ChatBackground.Transparent=>0,ChatBackground.Custom=>C.ChatBackgroundOpacity,_=>SurfacePolicy.PanelAlpha(C.ForceTransparentPanels,C.TextOnly,C.Glass,C.Opacity)};
-        ImGui.PushStyleColor(ImGuiCol.WindowBg,new Vector4(.035f,.045f,.065f,alpha));
+        var alpha=C.ChatBackground switch {ChatBackground.Transparent=>0,ChatBackground.Custom=>C.ChatBackgroundOpacity,_=>C.Material!=0?0:SurfacePolicy.PanelAlpha(C.ForceTransparentPanels,C.TextOnly,C.Glass,C.Opacity)};
+        ImGui.PushStyleColor(ImGuiCol.WindowBg,new Vector4(C.BackgroundColor,alpha));
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding,new Vector2(C.ChatPadding)*scale);
         ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing,new Vector2(6,5)*scale);
         ImGui.PushStyleVar(ImGuiStyleVar.ScrollbarSize,C.ChatScrollbarWidth*scale);
@@ -63,6 +63,7 @@ internal sealed partial class UserInterface
         try
         {
             if(!visible||!open){ChatAtBottom=false;return;}
+            if(C.ChatBackground==ChatBackground.Global)Appearance.DrawBackground();
             ImGui.SetWindowFontScale(C.ChatFontScale);
             if(C.Channels.All(c=>c.Id!=plugin.ActiveChannel))SelectChatChannel(C.Channels[0]);
             var channel=C.Channels.First(c=>c.Id==plugin.ActiveChannel);

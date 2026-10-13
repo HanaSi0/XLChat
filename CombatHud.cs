@@ -38,6 +38,7 @@ internal sealed partial class UserInterface
         ImGui.SetNextWindowPos(viewport.Pos + position, ImGuiCond.FirstUseEver);
         ImportLayout(id, dimensions, native);
         var visible = ImGui.Begin(name + "###XLinUI" + id, WindowFlags);
+        if(visible)Appearance.DrawBackground();
         ImGui.SetWindowFontScale(C.HudFontScale);
         return visible;
     }

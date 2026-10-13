@@ -18,6 +18,9 @@ namespace XLinUI;
 internal sealed partial class UserInterface(Plugin plugin)
 {
     internal bool SettingsOpen;
+    private AppearanceAssets? appearance;
+    private AppearanceAssets Appearance => appearance ??= new AppearanceAssets(C);
+    internal void DisposeAssets()=>appearance?.Dispose();
     internal bool ChatVisible { get; private set; }
     private string search = "";
     private readonly HashSet<string> importedLayouts = [];
@@ -61,6 +64,8 @@ internal sealed partial class UserInterface(Plugin plugin)
     {
         ChatVisible = false;
         Ready = HudReady.None;
+        Appearance.Update(C.Enabled && loggedIn && !Plugin.GameGui.GameUiHidden && (C.ShowChat || C.ShowTop || C.ShowStatus || C.ModernTarget || C.ModernCast || C.ModernStatuses));
+        using var customFont=Appearance.PushFont();
         using var theme = new Theme(C);
         if (C.Enabled && loggedIn && !Plugin.GameGui.GameUiHidden)
         {
@@ -79,6 +84,7 @@ internal sealed partial class UserInterface(Plugin plugin)
             if (teleportOpen) DrawTeleports();
         }
         if (SettingsOpen) DrawSettings();
+        Appearance.DrawDialog();
     }
 
     private void DrawTop()
@@ -163,6 +169,7 @@ internal sealed partial class UserInterface(Plugin plugin)
         ImGui.SetNextWindowPos(viewport.Pos);
         ImGui.SetNextWindowSize(new Vector2(viewport.Size.X, rows.Count * (ImGui.GetFontSize() + 8 * scale) + 10 * scale));
         var visible = ImGui.Begin("##XLinUITop", ImGuiWindowFlags.NoDecoration | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoSavedSettings);
+        if(visible)Appearance.DrawBackground();
         try
         {
             if (!visible) return;
@@ -238,6 +245,7 @@ internal sealed partial class UserInterface(Plugin plugin)
         ImGui.SetNextWindowSize(new Vector2(330, 100) * ImGuiHelpers.GlobalScale, ImGuiCond.FirstUseEver);
         ImportLayout("status", "_Parameter", "Parameter");
         var visible = ImGui.Begin("状态###XLinUIStatus", WindowFlags);
+        if(visible)Appearance.DrawBackground();
         try
         {
             if (!visible || Plugin.Objects.LocalPlayer is not { } player) return;
@@ -265,6 +273,7 @@ internal sealed partial class UserInterface(Plugin plugin)
         ImGui.SetNextWindowSize(new Vector2(270, 300) * ImGuiHelpers.GlobalScale, ImGuiCond.FirstUseEver);
         ImportLayout("party", "_PartyList", "PartyList");
         var visible = ImGui.Begin("队伍###XLinUIParty", WindowFlags);
+        if(visible)Appearance.DrawBackground();
         try
         {
             if (!visible) return;
@@ -301,6 +310,7 @@ internal sealed partial class UserInterface(Plugin plugin)
     {
         ImGui.SetNextWindowSize(new Vector2(600, 650) * ImGuiHelpers.GlobalScale, ImGuiCond.FirstUseEver);
         var visible = ImGui.Begin("XLinUI · 设置###XLinUISettings", ref SettingsOpen, WindowFlags);
+        if(visible)Appearance.DrawBackground();
         var changed = false;
         try
         {
@@ -340,6 +350,11 @@ internal sealed partial class UserInterface(Plugin plugin)
                     var tint = C.Tint;
                     if (ImGui.ColorEdit3("自定义色调", ref tint)) { C.Tint = tint; changed = true; }
                     }
+                    finally { ImGui.EndTabItem(); }
+                }
+                if (ImGui.BeginTabItem("素材与字体"))
+                {
+                    try { DrawAppearanceSettings(ref changed); }
                     finally { ImGui.EndTabItem(); }
                 }
                 if (ImGui.BeginTabItem("模块"))
@@ -462,7 +477,7 @@ internal sealed partial class UserInterface(Plugin plugin)
             ImGui.PushStyleVar(ImGuiStyleVar.ChildBorderSize, c.HideBorders || c.TextOnly ? 0 : 1);
             ImGui.PushStyleVar(ImGuiStyleVar.FrameBorderSize, c.HideBorders || c.TextOnly ? 0 : 1);
             var tint = c.Tint;
-            ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(new Vector3(.035f, .045f, .065f) + tint * .04f, SurfacePolicy.PanelAlpha(c.ForceTransparentPanels, c.TextOnly, c.Glass, c.Opacity)));
+            ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(c.BackgroundColor, c.Material!=0 ? 0 : SurfacePolicy.PanelAlpha(c.ForceTransparentPanels, c.TextOnly, c.Glass, c.Opacity)));
             ImGui.PushStyleColor(ImGuiCol.ChildBg, Vector4.Zero);
             ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(tint * .24f, c.ForceTransparentPanels || c.TextOnly ? 0 : .6f));
             ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(tint * .45f, 1));
@@ -470,7 +485,7 @@ internal sealed partial class UserInterface(Plugin plugin)
             ImGui.PushStyleColor(ImGuiCol.Header, new Vector4(tint * .35f, .8f));
             ImGui.PushStyleColor(ImGuiCol.CheckMark, new Vector4(tint, 1));
             ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(.24f, .29f, .35f, .65f));
-            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(.96f, .98f, 1, 1));
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(c.ForegroundColor, 1));
             ImGui.PushStyleColor(ImGuiCol.TextDisabled, c.HighContrastText ? new Vector4(.83f, .88f, .92f, 1) : new Vector4(.59f, .65f, .73f, 1));
             ImGui.PushStyleColor(ImGuiCol.FrameBg, new Vector4(.08f, .10f, .14f, c.ForceTransparentPanels || c.TextOnly ? .10f : .95f));
             ImGui.PushStyleColor(ImGuiCol.TitleBg, new Vector4(.055f, .07f, .10f, .95f));

@@ -66,6 +66,7 @@ internal sealed partial class UserInterface
         var visible = ImGui.Begin(title + "###XLinUI" + title, WindowFlags);
         if (visible)
         {
+            Appearance.DrawBackground();
             ReadableText.TextUnformatted(title); ImGui.SameLine();
             if (ReadableText.SmallButton("关闭")) open = false;
             ImGui.Separator();

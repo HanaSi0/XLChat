@@ -10,6 +10,21 @@ namespace XLinUI;
 public sealed class Configuration : IPluginConfiguration
 {
     public int Version { get; set; } = 6;
+    public int Material { get; set; } // 0 existing, 1 solid, 2 image, 3 sampled glass
+    public string BackgroundFile { get; set; } = "";
+    public Vector3 BackgroundColor { get; set; } = new(.035f,.045f,.065f);
+    public Vector3 ForegroundColor { get; set; } = new(.95f,.97f,1);
+    public float BackgroundOpacity { get; set; } = .85f;
+    public float BackgroundTintOpacity { get; set; } = .35f;
+    public float ImageBlur { get; set; }
+    public int ImageFit { get; set; }
+    public float GlassBlur { get; set; } = 20;
+    public float GlassRefresh { get; set; } = 2;
+    public bool UseCustomFont { get; set; }
+    public string FontFile { get; set; } = "";
+    public float FontSize { get; set; } = 18;
+    public int FontFace { get; set; }
+
     public ChatNavigation ChatNavigation { get; set; }
     public ChatPresentation ChatPresentation { get; set; }
     public ChatBackground ChatBackground { get; set; }
@@ -125,6 +140,14 @@ public sealed class Configuration : IPluginConfiguration
 
     public void Normalize()
     {
+        Material=Math.Clamp(Material,0,3);ImageFit=Math.Clamp(ImageFit,0,1);
+        BackgroundFile??="";FontFile??="";
+        BackgroundOpacity=Clamp(BackgroundOpacity);BackgroundTintOpacity=Clamp(BackgroundTintOpacity);
+        BackgroundColor=new(Clamp(BackgroundColor.X),Clamp(BackgroundColor.Y),Clamp(BackgroundColor.Z));
+        ForegroundColor=new(Clamp(ForegroundColor.X),Clamp(ForegroundColor.Y),Clamp(ForegroundColor.Z));
+        ImageBlur=Bound(ImageBlur,0,32,0);GlassBlur=Bound(GlassBlur,1,64,20);GlassRefresh=Bound(GlassRefresh,.5f,4,2);
+        FontSize=Bound(FontSize,12,36,18);FontFace=Math.Clamp(FontFace,0,20);
+
         var oldVersion=Version;
         Version = 6;
         ChatNavigation=Enum.IsDefined(ChatNavigation)?ChatNavigation:ChatNavigation.Left;

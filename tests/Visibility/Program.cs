@@ -97,3 +97,12 @@ var narrowChat=ChatGeometry.Compute(220,160,600,300,1,true);
 Check(narrowChat.Messages>0&&narrowChat.Feed>0&&narrowChat.Sidebar<220&&narrowChat.Composer<160,"narrow chat sizes cannot consume the message area");
 var tabsChat=ChatGeometry.Compute(600,400,160,120,1,false);
 Check(tabsChat.Sidebar==0&&tabsChat.Messages==600,"tabs or hidden navigation leave full message width");
+
+var packed=ImageEffects.Pack(new byte[]{1,2,3,255,9,9,9,9,4,5,6,255},1,2,8);
+Check(packed.Length==8&&packed[4]==4,"pack padded readback rows");
+var solid=new byte[]{80,100,120,255,80,100,120,255};
+Check(System.Linq.Enumerable.SequenceEqual(ImageEffects.Blur(solid,2,1,12),solid),"blur constant image with clamped edges");
+Check(System.Linq.Enumerable.SequenceEqual(ImageEffects.Blur(solid,2,1,0),solid),"zero blur returns unchanged pixels");
+var transparent=ImageEffects.Blur(new byte[]{255,0,0,0,0,0,255,255},2,1,1);
+Check(transparent[0]==0&&transparent[4]==0&&transparent[2]>240,"premultiplied blur avoids transparent color bleed");
+try{ImageEffects.Pack(new byte[4],2,1,8);Check(false,"invalid readback must reject");}catch(ArgumentException){Check(true,"reject incomplete readback");}

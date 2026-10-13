@@ -74,3 +74,14 @@ if(selectedCopy.ChatActiveChannelId!=selectedChat.Channels[1].Id||selectedCopy.C
 selectedCopy.ChatSendRoute="/teleport";selectedCopy.ChatActiveChannelId="missing";selectedCopy.Normalize();
 if(selectedCopy.ChatSendRoute!="say"||selectedCopy.ChatActiveChannelId!=selectedCopy.Channels[0].Id)throw new Exception("Selection recovery failed");
 Console.WriteLine("PASS: selected view and send route persist independently with invalid values recovered");
+
+var appearanceConfig=new Configuration{Material=99,GlassRefresh=float.NaN,FontSize=float.PositiveInfinity,ImageBlur=-10,BackgroundOpacity=2,FontFace=-3};appearanceConfig.Normalize();
+if(appearanceConfig.Material!=3||appearanceConfig.GlassRefresh!=2||appearanceConfig.FontSize!=18||appearanceConfig.ImageBlur!=0||appearanceConfig.BackgroundOpacity!=1||appearanceConfig.FontFace!=0)throw new Exception("Appearance normalization failed");
+Console.WriteLine("PASS: appearance values normalize safely");
+
+var assetConfig=new Configuration{Material=2,BackgroundFile="C:/素材/背景.png",FontFile="C:/字体/中文.ttf",UseCustomFont=true,FontSize=24,BackgroundColor=new(.1f,.2f,.3f)};
+var assetCopy=JsonConvert.DeserializeObject<Configuration>(JsonConvert.SerializeObject(assetConfig))!;assetCopy.Normalize();
+if(assetCopy.BackgroundFile!=assetConfig.BackgroundFile||assetCopy.FontFile!=assetConfig.FontFile||!assetCopy.UseCustomFont||assetCopy.FontSize!=24||assetCopy.BackgroundColor!=assetConfig.BackgroundColor)throw new Exception("Asset settings roundtrip failed");
+Console.WriteLine("PASS: local asset paths font and material colors persist");
+if(JsonConvert.DeserializeObject<Configuration>("{}")!.Material!=0)throw new Exception("Legacy material changed unexpectedly");
+Console.WriteLine("PASS: upgrades keep previous transparent material by default");
