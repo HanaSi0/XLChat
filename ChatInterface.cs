@@ -281,6 +281,7 @@ internal sealed partial class UserInterface
         if(chatRoute=="tell"){ImGui.SetNextItemWidth(-1);ImGui.InputTextWithHint("##tell-recipient","玩家名@世界名",ref tellRecipient,100);}
         var total=ImGui.GetContentRegionAvail().X;var button=C.ChatShowSendButton?Math.Min(C.ChatSendButtonWidth*scale,Math.Max(30*scale,total*.3f)):0;
         var input=Math.Max(20,total-button-(C.ChatShowSendButton?ImGui.GetStyle().ItemSpacing.X:0));
+        if(C.ChatInputWidth>0)input=Math.Min(input,C.ChatInputWidth*scale);
         var inputHeight=Math.Max(ImGui.GetFontSize()+4,C.ChatInputHeight*scale);
         ImGui.PushStyleVar(ImGuiStyleVar.FramePadding,new Vector2(5,Math.Max(2,(inputHeight-ImGui.GetFontSize())/2)));
         try

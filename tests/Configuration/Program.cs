@@ -54,9 +54,9 @@ transparent.HudFontScale=float.PositiveInfinity;transparent.Normalize();if(trans
 transparent.ApplyModernPreset();if(!transparent.ForceTransparentPanels||!transparent.ForceTransparentNative||transparent.TextOnly)throw new Exception("Updated preset failed");
 Console.WriteLine("PASS: modern preset uses transparent backgrounds without dropping resource bars");
 
-var chat = new Configuration { ChatWidth = 1024, ChatHeight = 600, ChatSidebarWidth = 230, ChatNavigation = ChatNavigation.Right, ChatComposerHeight = 180, ChatHeaderFontScale = 1.3f, ChatBackground = ChatBackground.Custom, ChatBackgroundOpacity=.3f, NativeInteractions=false };
-var profile=ChatLayoutProfile.Capture(chat);chat.ChatWidth=400;chat.ChatSidebarWidth=80;chat.ChatNavigation=ChatNavigation.Hidden;profile.Values["NativeInteractions"]="true";profile.Values["ChatInputHeight"]="999";profile.Apply(chat);
-if(chat.ChatWidth!=1024||chat.ChatSidebarWidth!=230||chat.ChatNavigation!=ChatNavigation.Right||chat.ChatHeaderFontScale!=1.3f||chat.NativeInteractions||chat.ChatInputHeight!=100)throw new Exception("Chat layout profile failed");
+var chat = new Configuration { ChatWidth = 1024, ChatHeight = 600, ChatSidebarWidth = 230, ChatNavigation = ChatNavigation.Right, ChatComposerHeight = 180, ChatHeaderFontScale = 1.3f, ChatInputWidth=220, ChatBackground = ChatBackground.Custom, ChatBackgroundOpacity=.3f, NativeInteractions=false };
+var profile=ChatLayoutProfile.Capture(chat);chat.ChatWidth=400;chat.ChatInputWidth=0;chat.ChatSidebarWidth=80;chat.ChatNavigation=ChatNavigation.Hidden;profile.Values["NativeInteractions"]="true";profile.Values["ChatInputHeight"]="999";profile.Apply(chat);
+if(chat.ChatWidth!=1024||chat.ChatInputWidth!=220||chat.ChatSidebarWidth!=230||chat.ChatNavigation!=ChatNavigation.Right||chat.ChatHeaderFontScale!=1.3f||chat.NativeInteractions||chat.ChatInputHeight!=100)throw new Exception("Chat layout profile failed");
 Console.WriteLine("PASS: profile restores all chat layout values and clamps input without changing interaction authorization");
 chat.ChatProfiles["宽屏"]=profile;var chatCopy=JsonConvert.DeserializeObject<Configuration>(JsonConvert.SerializeObject(chat))!;chatCopy.Normalize();
 if(chatCopy.ChatProfiles.Count!=1||chatCopy.ChatComposerHeight!=180||chatCopy.ChatBackground!=ChatBackground.Custom||chatCopy.ChatBackgroundOpacity!=.3f)throw new Exception("Chat profile persistence failed");

@@ -20,6 +20,7 @@ internal sealed partial class UserInterface
             ChatSlider("频道栏宽度",C.ChatSidebarWidth,40,600,v=>C.ChatSidebarWidth=v,ref changed);
             ChatSlider("频道行高度",C.ChatSidebarItemHeight,20,80,v=>C.ChatSidebarItemHeight=v,ref changed);
             ChatSlider("输入区高度",C.ChatComposerHeight,60,300,v=>C.ChatComposerHeight=v,ref changed);
+            ChatSlider("输入框宽度（0为填满）",C.ChatInputWidth,0,3000,v=>C.ChatInputWidth=v,ref changed);
             ChatSlider("输入框高度",C.ChatInputHeight,24,100,v=>C.ChatInputHeight=v,ref changed);
             ChatSlider("发送频道选择器宽度",C.ChatSelectorWidth,60,300,v=>C.ChatSelectorWidth=v,ref changed);
             ChatSlider("发送按钮高度",C.ChatSendButtonHeight,24,100,v=>C.ChatSendButtonHeight=v,ref changed);

@@ -23,6 +23,7 @@ public sealed class Configuration : IPluginConfiguration
     public float ChatSendButtonHeight { get; set; } = 32;
     public bool ChatShowSendButton { get; set; } = true;
     public float ChatInputHeight { get; set; } = 32;
+    public float ChatInputWidth { get; set; }
     public float ChatSendButtonWidth { get; set; } = 60;
     public float ChatSelectorWidth { get; set; } = 110;
     public float ChatSidebarFontScale { get; set; } = 1;
@@ -138,6 +139,7 @@ public sealed class Configuration : IPluginConfiguration
         ChatScrollbarWidth=Bound(ChatScrollbarWidth,8,30,10);
         ChatSendButtonHeight=Bound(ChatSendButtonHeight,24,100,32);
         ChatInputHeight=Bound(ChatInputHeight,24,100,32);
+        ChatInputWidth=Bound(ChatInputWidth,0,3000,0);
         ChatSendButtonWidth=Bound(ChatSendButtonWidth,40,180,60);
         ChatSelectorWidth=Bound(ChatSelectorWidth,60,300,110);
         ChatSidebarFontScale=Bound(ChatSidebarFontScale,.6f,2,1);
