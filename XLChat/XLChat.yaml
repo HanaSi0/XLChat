@@ -1,11 +1,7 @@
 name: XLChat
 author: HanaSi0
 punchline: 基于chattwo重构的聊天框插件
-description: |-
-  基于chattwo重构的聊天框插件
-
-  在线仓库：
-  https://raw.githubusercontent.com/HanaSi0/XLChat/main/pluginmaster.json
+description: 基于chattwo重构的聊天框插件
 repo_url: https://github.com/HanaSi0/XLChat
 icon_url: https://raw.githubusercontent.com/HanaSi0/XLChat/main/assets/logo.png
 accepts_feedback: true
