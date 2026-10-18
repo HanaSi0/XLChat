@@ -80,12 +80,27 @@ public class MessageManager : IAsyncDisposable
         PendingMessageThread = new Thread(() => ProcessPendingMessages(PendingThreadCancellationToken.Token));
         PendingMessageThread.Start();
 
-        ContentIdResolverHook = Plugin.GameInteropProvider.HookFromAddress<RaptureLogModule.Delegates.AddMsgSourceEntry>(RaptureLogModule.MemberFunctionPointers.AddMsgSourceEntry, ContentIdResolver);
-        ContentIdResolverHook.Enable();
+        try
+        {
+            ContentIdResolverHook = Plugin.GameInteropProvider.HookFromAddress<RaptureLogModule.Delegates.AddMsgSourceEntry>(RaptureLogModule.MemberFunctionPointers.AddMsgSourceEntry, ContentIdResolver);
+            ContentIdResolverHook.Enable();
 
-        Plugin.ChatGui.ChatMessageUnhandled += ChatMessage;
-        Plugin.Framework.Update += OnFrameworkUpdate;
-        Plugin.ClientState.Logout += Logout;
+            Plugin.ChatGui.ChatMessageUnhandled += ChatMessage;
+            Plugin.Framework.Update += OnFrameworkUpdate;
+            Plugin.ClientState.Logout += Logout;
+        }
+        catch
+        {
+            ContentIdResolverHook?.Dispose();
+            Plugin.ClientState.Logout -= Logout;
+            Plugin.Framework.Update -= OnFrameworkUpdate;
+            Plugin.ChatGui.ChatMessageUnhandled -= ChatMessage;
+            PendingThreadCancellationToken.Cancel();
+            PendingMessageThread.Join();
+            Store.Dispose();
+            PendingThreadCancellationToken.Dispose();
+            throw;
+        }
     }
 
     public async ValueTask DisposeAsync()

@@ -3,7 +3,7 @@
     "Author": "HanaSi0",
     "Name": "XLChat",
     "InternalName": "XLChat",
-    "AssemblyVersion": "1.0.7.0",
+    "AssemblyVersion": "1.0.8.0",
     "Description": "基于chattwo重构的聊天框插件",
     "ApplicableVersion": "any",
     "RepoUrl": "https://github.com/HanaSi0/XLChat",
@@ -18,11 +18,11 @@
     "IconUrl": "https://raw.githubusercontent.com/HanaSi0/XLChat/main/assets/logo.png",
     "Punchline": "基于chattwo重构的聊天框插件",
     "AcceptsFeedback": true,
-    "DownloadLinkInstall": "https://github.com/HanaSi0/XLChat/releases/download/v1.0.7/XLChat.zip",
-    "DownloadLinkUpdate": "https://github.com/HanaSi0/XLChat/releases/download/v1.0.7/XLChat.zip",
-    "DownloadLinkTesting": "https://github.com/HanaSi0/XLChat/releases/download/v1.0.7/XLChat.zip",
+    "DownloadLinkInstall": "https://github.com/HanaSi0/XLChat/releases/download/v1.0.8/XLChat.zip",
+    "DownloadLinkUpdate": "https://github.com/HanaSi0/XLChat/releases/download/v1.0.8/XLChat.zip",
+    "DownloadLinkTesting": "https://github.com/HanaSi0/XLChat/releases/download/v1.0.8/XLChat.zip",
     "IsHide": false,
     "IsTestingExclusive": false,
-    "LastUpdate": 1791983777
+    "LastUpdate": 1792324053
   }
 ]

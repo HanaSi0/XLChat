@@ -1,5 +1,4 @@
 using System.Numerics;
-using System.Runtime.InteropServices;
 using XLChat.Code;
 using XLChat.GameFunctions;
 using XLChat.GameFunctions.Types;
@@ -186,48 +185,34 @@ public class InputHandler
             UIGlobals.PlaySoundEffect(ChatOpenSfx);
         }
 
+        // Char-filter callbacks do not provide an editable text buffer.
+        if (data.EventFlag == ImGuiInputTextFlags.CallbackCharFilter)
+            return Plugin.Functions.Chat.IsCharValid((char)data.EventChar) ? 0 : 1;
+
+        var input = new ReadOnlySpan<byte>(data.Buf, data.BufTextLen);
+        var inputText = System.Text.Encoding.UTF8.GetString(input);
+
         // Set the cursor pos to the user selected
         if (Plugin.InputPreview.SelectedCursorPos != -1)
         {
-            data.CursorPos = Plugin.InputPreview.SelectedCursorPos;
+            data.CursorPos = TextInputOffsets.ToUtf8(inputText, Plugin.InputPreview.SelectedCursorPos);
+            data.SelectionStart = data.SelectionEnd = data.CursorPos;
             Plugin.InputPreview.SelectedCursorPos = -1;
         }
 
         CursorPos = data.CursorPos;
         if (data.EventFlag == ImGuiInputTextFlags.CallbackCompletion)
         {
-            if (data.CursorPos == 0)
-            {
-                AutoCompleteHandler.AutoCompleteInfo = new AutoCompleteInfo(string.Empty, data.CursorPos, data.CursorPos);
-                AutoCompleteHandler.AutoCompleteOpen = true;
-                AutoCompleteHandler.AutoCompleteSelection = 0;
-
-                return 0;
-            }
-
-            int white;
-            for (white = data.CursorPos - 1; white >= 0; white--)
-                if (data.Buf[white] == ' ')
-                    break;
-
-            var start = data.Buf + white + 1;
-            var end = data.CursorPos - white - 1;
-            var utf8Message = Marshal.PtrToStringUTF8((nint)start, end);
-            var correctedCursor = data.CursorPos - (end - utf8Message.Length);
-            AutoCompleteHandler.AutoCompleteInfo = new AutoCompleteInfo(utf8Message, white + 1, correctedCursor);
+            AutoCompleteHandler.AutoCompleteInfo = AutoCompleteInfo.FromUtf8(input, data.CursorPos);
             AutoCompleteHandler.AutoCompleteOpen = true;
             AutoCompleteHandler.AutoCompleteSelection = 0;
             return 0;
         }
 
-        if (data.EventFlag == ImGuiInputTextFlags.CallbackCharFilter)
-            if (!Plugin.Functions.Chat.IsCharValid((char) data.EventChar))
-                return 1;
-
         if (Activate)
         {
             Activate = false;
-            data.CursorPos = ActivatePos > -1 ? ActivatePos : ChatInput.Length;
+            data.CursorPos = ActivatePos > -1 ? TextInputOffsets.ToUtf8(inputText, ActivatePos) : data.BufTextLen;
             data.SelectionStart = data.SelectionEnd = data.CursorPos;
             ActivatePos = -1;
         }

@@ -55,22 +55,30 @@ public sealed unsafe class Chat : IDisposable
     public Chat(Plugin plugin)
     {
         Plugin = plugin;
-        Plugin.GameInteropProvider.InitializeFromAttributes(this);
+        try
+        {
+            Plugin.GameInteropProvider.InitializeFromAttributes(this);
 
-        ChatLogRefreshHook?.Enable();
-        ContextMenuTellInForayHook?.Enable();
+            ChatLogRefreshHook?.Enable();
+            ContextMenuTellInForayHook?.Enable();
 
-        ChangeChannelNameHook = Plugin.GameInteropProvider.HookFromAddress<AgentChatLog.Delegates.ChangeChannelName>(AgentChatLog.MemberFunctionPointers.ChangeChannelName, ChangeChannelNameDetour);
-        ChangeChannelNameHook.Enable();
+            ChangeChannelNameHook = Plugin.GameInteropProvider.HookFromAddress<AgentChatLog.Delegates.ChangeChannelName>(AgentChatLog.MemberFunctionPointers.ChangeChannelName, ChangeChannelNameDetour);
+            ChangeChannelNameHook.Enable();
 
-        ReplyInSelectedChatModeHook = Plugin.GameInteropProvider.HookFromAddress<RaptureShellModule.Delegates.ReplyInSelectedChatMode>(RaptureShellModule.MemberFunctionPointers.ReplyInSelectedChatMode, ReplyInSelectedChatModeDetour);
-        ReplyInSelectedChatModeHook.Enable();
+            ReplyInSelectedChatModeHook = Plugin.GameInteropProvider.HookFromAddress<RaptureShellModule.Delegates.ReplyInSelectedChatMode>(RaptureShellModule.MemberFunctionPointers.ReplyInSelectedChatMode, ReplyInSelectedChatModeDetour);
+            ReplyInSelectedChatModeHook.Enable();
 
-        SetChatLogTellTargetHook = Plugin.GameInteropProvider.HookFromAddress<RaptureShellModule.Delegates.SetContextTellTarget>(RaptureShellModule.MemberFunctionPointers.SetContextTellTarget, SetContextTellTarget);
-        SetChatLogTellTargetHook.Enable();
+            SetChatLogTellTargetHook = Plugin.GameInteropProvider.HookFromAddress<RaptureShellModule.Delegates.SetContextTellTarget>(RaptureShellModule.MemberFunctionPointers.SetContextTellTarget, SetContextTellTarget);
+            SetChatLogTellTargetHook.Enable();
 
-        Plugin.ClientState.Login += Login;
-        Login();
+            Plugin.ClientState.Login += Login;
+            Login();
+        }
+        catch
+        {
+            Dispose();
+            throw;
+        }
     }
 
     public void Dispose()

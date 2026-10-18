@@ -33,18 +33,26 @@ public unsafe class GameFunctions : IDisposable
     public GameFunctions(Plugin plugin)
     {
         Plugin = plugin;
-        KeybindManager = new KeybindManager(plugin);
-        Chat = new Chat(Plugin);
+        try
+        {
+            KeybindManager = new KeybindManager(plugin);
+            Chat = new Chat(Plugin);
 
-        Plugin.GameInteropProvider.InitializeFromAttributes(this);
+            Plugin.GameInteropProvider.InitializeFromAttributes(this);
 
-        ResolveTextCommandPlaceholderHook?.Enable();
+            ResolveTextCommandPlaceholderHook?.Enable();
+        }
+        catch
+        {
+            Dispose();
+            throw;
+        }
     }
 
     public void Dispose()
     {
-        Chat.Dispose();
-        KeybindManager.Dispose();
+        Chat?.Dispose();
+        KeybindManager?.Dispose();
 
         ResolveTextCommandPlaceholderHook?.Dispose();
 

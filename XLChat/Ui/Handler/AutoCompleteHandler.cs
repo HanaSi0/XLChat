@@ -138,7 +138,7 @@ public class AutoCompleteHandler
         if (FixCursor && AutoCompleteInfo != null)
         {
             FixCursor = false;
-            data.CursorPos = AutoCompleteInfo.ToComplete.Length;
+            data.CursorPos = data.BufTextLen;
             data.SelectionStart = data.SelectionEnd = data.CursorPos;
         }
 

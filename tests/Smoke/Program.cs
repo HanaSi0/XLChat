@@ -82,3 +82,32 @@ if(!ordered.SequenceEqual(new[]{1,3,0,2}))throw new Exception("Pinning must pres
 noticeTab.NotifyNewMessages=true;noticeTab.Unread=0;
 if(noticeTab.WantsAttention)throw new Exception("Read pages must not flash");
 Console.WriteLine("PASS: muted/read page attention, per-page settings persistence and stable pinned ordering");
+
+// These are byte offsets supplied by ImGui, not UTF-16 string indices.
+foreach (var sample in new[]
+{
+    (Text: "hello abc", Prefix: "hello ", Word: "abc", Suffix: ""),
+    (Text: "你好 abc", Prefix: "你好 ", Word: "abc", Suffix: ""),
+    (Text: "你好 世界 后缀", Prefix: "你好 ", Word: "世界", Suffix: " 后缀"),
+    (Text: "😀 中文 tail", Prefix: "😀 ", Word: "中文", Suffix: " tail"),
+    (Text: "你好 ", Prefix: "你好 ", Word: "", Suffix: ""),
+    (Text: "", Prefix: "", Word: "", Suffix: ""),
+})
+{
+    var bytes = System.Text.Encoding.UTF8.GetBytes(sample.Text);
+    var cursor = System.Text.Encoding.UTF8.GetByteCount(sample.Prefix + sample.Word);
+    var completion = XLChat.Ui.AutoCompleteInfo.FromUtf8(bytes, cursor);
+    var replaced = sample.Text[..completion.StartPos] + "<at:1,2>" + sample.Text[completion.EndPos..];
+    if (completion.ToComplete != sample.Word || replaced != sample.Prefix + "<at:1,2>" + sample.Suffix)
+        throw new Exception("Unicode completion lost input or used byte offsets as string indices");
+    var caret = XLChat.Util.TextInputOffsets.ToUtf8(replaced, completion.StartPos + "<at:1,2>".Length);
+    if (caret != System.Text.Encoding.UTF8.GetByteCount(sample.Prefix + "<at:1,2>"))
+        throw new Exception("Unicode completion restore cursor is incorrect");
+}
+if (XLChat.Util.TextInputOffsets.ToUtf8("你好", 2) != 6 ||
+    XLChat.Util.TextInputOffsets.ToUtf8("😀a", 1) != 0 ||
+    XLChat.Util.TextInputOffsets.ToUtf8("😀a", 99) != 5 ||
+    XLChat.Util.TextInputOffsets.ToUtf8("你好", -1) != 0 ||
+    XLChat.Util.TextInputOffsets.ToUtf16(System.Text.Encoding.UTF8.GetBytes("你好"), 2) != 0)
+    throw new Exception("Cursor conversion must clamp safely to Unicode boundaries");
+Console.WriteLine("PASS: Chinese/emoji/ASCII completion replacement, suffix preservation and UTF-8 cursor boundaries");
